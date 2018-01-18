@@ -1,0 +1,4 @@
+<non-negative integer (number of following numbers)>
+<non-negative integer to be sorted>
+<non-negative integer to be sorted>
+<etc.>
