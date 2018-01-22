@@ -7,3 +7,6 @@ sort: prog1sorter.c
 
 generate: prog1generator.c
 	gcc -Wall -c prog1generator.c
+
+clean:
+	rm *.o prog1sorter prog1generator
