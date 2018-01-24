@@ -12,6 +12,16 @@ struct parsed_arguments check_arguments(int argc, char **argv, char *name) {
 
 	// Read arguments
 	for (i = 1; i < argc; i++) {
+		if (i == argc - 1) {
+			if (strcmp(name, "SORT") == 0) {
+				fprintf(stderr, "USAGE:\tprog1sorter [-u] [-n <num-integers>] [-m <min-int>] [-M <max-int>]\n\t[-i <input-file-name>] [-o <output-file-name>] [-c <count-file-name>]\n");
+			}
+			else {
+				fprintf(stderr, "USAGE:\tprog1generator [-u] [-n <num-integers>] [-m <min-int>] [-M <max-int>]\n\t[-s <seed>] [-o <output-file-name>]\n");
+			}
+			args.error_found = 1;
+			return args;
+		}
 		if (strcmp(argv[i], "-u") == 0) {
 			if (strcmp(name, "SORT") == 0) {
 				fprintf(stderr, "USAGE:\tprog1sorter [-u] [-n <num-integers>] [-m <min-int>] [-M <max-int>]\n\t[-i <input-file-name>] [-o <output-file-name>] [-c <count-file-name>]\n");
@@ -21,7 +31,6 @@ struct parsed_arguments check_arguments(int argc, char **argv, char *name) {
 			}
 			args.error_found = 1;
 			return args;
-			i--;
 		}
 		if (strcmp(argv[i], "-n") == 0) {
 			int num_ints = atoi(argv[i+1]);
