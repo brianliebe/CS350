@@ -99,7 +99,12 @@ struct parsed_arguments check_arguments(int argc, char **argv, char *name) {
 				// This is fine, this means it's valid
 			}
 			else {
-				fprintf(stderr, "Error: Incorrect input: %s\n", argv[i]);
+				if (strcmp(name, "SORT") == 0) {
+					fprintf(stderr, "USAGE:\tprog1sorter [-u] [-n <num-integers>] [-m <min-int>] [-M <max-int>]\n\t[-i <input-file-name>] [-o <output-file-name>] [-c <count-file-name>]\n");
+				}
+				else {
+					fprintf(stderr, "USAGE:\tprog1generator [-u] [-n <num-integers>] [-m <min-int>] [-M <max-int>]\n\t[-s <seed>] [-o <output-file-name>]\n");
+				}
 				args.error_found = 1;
 				return args;
 			}
