@@ -12,4 +12,4 @@ shared: shared.c shared.h
 	gcc -Wall -c shared.c
 
 clean:
-	rm *.o prog1sorter prog1generator
+	rm -f *.o prog1sorter prog1generator
