@@ -49,7 +49,7 @@ int main (int argc, char *argv[]) {
 		fprintf(stderr, "Error: Issue with -m and -M (max smaller than min).\n");
 		return 0;
 	}
-	
+
 	// Set the output file if one is specified
 	if (strcmp(output_file, "") != 0) {
 		s_out = fopen(output_file, "w");
@@ -164,13 +164,13 @@ int main (int argc, char *argv[]) {
 		fclose(file);
 		free(line);
 	}
-	
+
 	// Sort the array with qsort
 	qsort((void*)numbers, array_length, sizeof(numbers[0]), comparator);
 	printArr(numbers, array_length, s_out);
-	
+
 	// Go through the username
-	for (i = 0; i < strlen(username); i++) {
+	for (i = 0; i < (int)strlen(username); i++) {
 		int c = username[i];
 		int count = 0;
 		for (j = 0; j < array_length; j++) {

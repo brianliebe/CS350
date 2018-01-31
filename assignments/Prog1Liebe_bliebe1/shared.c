@@ -32,10 +32,10 @@ struct parsed_arguments check_arguments(int argc, char **argv, char *name) {
 		// The only exception is -u, but this should print for error anyways.
 		if (i == argc - 1) {
 			if (strcmp(name, "SORT") == 0) {
-				fprintf(stderr, sort_message);
+				fprintf(stderr, "%s", sort_message);
 			}
 			else {
-				fprintf(stderr, gen_message);
+				fprintf(stderr, "%s", gen_message);
 			}
 			args.error_found = 1;
 			return args;
@@ -43,10 +43,10 @@ struct parsed_arguments check_arguments(int argc, char **argv, char *name) {
 		// Sort of redundant, but this checks for the -u flag
 		if (strcmp(argv[i], "-u") == 0) {
 			if (strcmp(name, "SORT") == 0) {
-				fprintf(stderr, sort_message);
+				fprintf(stderr, "%s", sort_message);
 			}
 			else {
-				fprintf(stderr, gen_message);
+				fprintf(stderr, "%s", gen_message);
 			}
 			args.error_found = 1;
 			return args;
@@ -86,10 +86,10 @@ struct parsed_arguments check_arguments(int argc, char **argv, char *name) {
 			args.input_file = argv[i+1];
 			if (args.input_file[0] == '-') {
 				if (strcmp(name, "SORT") == 0) {
-					fprintf(stderr, sort_message);
+					fprintf(stderr, "%s", sort_message);
 				}
 				else {
-					fprintf(stderr, gen_message);
+					fprintf(stderr, "%s", gen_message);
 				}
 				args.error_found = 1;
 				return args;
@@ -100,10 +100,10 @@ struct parsed_arguments check_arguments(int argc, char **argv, char *name) {
 			args.output_file = argv[i+1];
 			if (args.output_file[0] == '-') {
 				if (strcmp(name, "SORT") == 0) {
-					fprintf(stderr, sort_message);
+					fprintf(stderr, "%s", sort_message);
 				}
 				else {
-					fprintf(stderr, gen_message);
+					fprintf(stderr, "%s", gen_message);
 				}
 				args.error_found = 1;
 				return args;
@@ -114,10 +114,10 @@ struct parsed_arguments check_arguments(int argc, char **argv, char *name) {
 			args.count_file = argv[i+1];
 			if (args.count_file[0] == '-') {
 				if (strcmp(name, "SORT") == 0) {
-					fprintf(stderr, sort_message);
+					fprintf(stderr, "%s", sort_message);
 				}
 				else {
-					fprintf(stderr, gen_message);
+					fprintf(stderr, "%s", gen_message);
 				}
 				args.error_found = 1;
 				return args;
@@ -136,10 +136,10 @@ struct parsed_arguments check_arguments(int argc, char **argv, char *name) {
 			}
 			else {
 				if (strcmp(name, "SORT") == 0) {
-					fprintf(stderr, sort_message);
+					fprintf(stderr, "%s", sort_message);
 				}
 				else {
-					fprintf(stderr, gen_message);
+					fprintf(stderr, "%s", gen_message);
 				}
 				args.error_found = 1;
 				return args;
