@@ -1,13 +1,8 @@
 all:	prog2tree
-
-sleep: sleep.c
-	gcc sleep.c -o sleep
-
-fork: simplefork.c
-	gcc simplefork.c -o fork
+	gcc -Wall -Wextra prog2tree.o -o prog2tree
 
 prog2tree: prog2tree.c
-	gcc -Wall -Wextra prog2tree.c -o prog2tree
+	gcc -Wall -Wextra -c prog2tree.c
 
 clean:
 	rm -f *.o prog2tree
