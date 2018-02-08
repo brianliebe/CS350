@@ -1,25 +1,39 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-/*
-				2
-		1				1
-
-*/
+#include <unistd.h>
 
 int getpid();
 int getppid();
 pid_t fork();
 
 void build_tree(int num_levels, int num_children, int pause, int sleep_time) {
-	int current_level = num_levels - 1;
 	int i;
+	int current_level = num_levels - 1;
+
+	char children_string[50];
+	char level_string[50];
+	char sleep_string[50];
+
+	sprintf(children_string, "%d", num_children);
+	sprintf(level_string, "%d", num_levels - 1);
+	sprintf(sleep_string, "%d", sleep_time);
+
+	char *command = "./prog2tree";
+	char *args[8];
+	args[0] = command;
+	args[1] = "-N";
+	args[2] = level_string;
+	args[3] = "-M";
+	args[4] = children_string;
+	args[5] = "-s";
+	args[6] = sleep_string;
+	args[7] = NULL;
+
+	// char *command[] = {"./prog2tree", "-N", children_string, "-M", level_string };
+	
 	fprintf(stdout, "ALIVE:\t\tLevel %d process with pid=%d, child of ppid=%d\n", current_level, getpid(), getppid());
-	/*
-	while (num_levels > 0) {
-		num_levels--;
-		printf("children: %d\n", num_children);
+	if (num_levels > 1) {
 		for (i = 0; i < num_children; i++) {
 			pid_t pid = fork();
 			if (pid < 0) {
@@ -27,36 +41,20 @@ void build_tree(int num_levels, int num_children, int pause, int sleep_time) {
 				return;
 			}
 			else if (pid == 0) {
-				// Child!
-				i = num_children;
-				current_level--;
-			}
-			else {
-				// Parent!
-				num_levels = 0;
-			}
-		}
-	}
-	*/
-	int make_children = 1;
-	while (current_level > 0 && make_children) {
-		fprintf(stdout, "ALIVE:\t\tLevel %d process with pid=%d, child of ppid=%d\n", current_level, getpid(), getppid());
-		for (i = 0; i < num_children; i++) {
-			pid_t pid = fork();
-			if (pid < 0) {
-				fprintf(stderr, "Error: Forking failed\n");
-				return 0;
-			}
-			else if (pid == 0) {
 				// Child
 				current_level--;
-				i = num_children;
+				execvp(command, args);
+				printf("THIS SHOULD NOT RUN\n");
+				break;
 			}
 			else {
 				// Parent
-				make_children = 0;
 			}
 		}
+	}
+	else {
+		// LEAF PROCESS
+		sleep(sleep_time);
 	}
 	fprintf(stdout, "EXITING:\tLevel %d process with pid=%d, child of ppid=%d\n", current_level, getpid(), getppid());
 }
@@ -126,6 +124,9 @@ int main (int argc, char **argv) {
 	if (sleep_time_specified == 1 && pause == 1) {
 		fprintf(stderr, "Error: -p and -s both specified\n");
 		return 0;
+	}
+	if (pause == 1) {
+		sleep_time = 0;
 	}
 	build_tree(num_levels, num_children, pause, sleep_time);
 	return 0;
