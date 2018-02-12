@@ -48,7 +48,7 @@ void build_tree(int num_levels, int num_children, int pause_process, int sleep_t
 	}
 	
 	// Print out the "alive" 
-	fprintf(stdout, "ALIVE: Level %d process with pid=%d, child of ppid=%d.\n", current_level, getpid(), getppid());
+	fprintf(stdout, "ALIVE: Level %d process with pid=%d, child of ppid=%d\n", current_level, getpid(), getppid());
 
 	// If we're not at the leaf level, then we create "num_children" amount of new processes
 	if (num_levels > 1) {
@@ -79,7 +79,7 @@ void build_tree(int num_levels, int num_children, int pause_process, int sleep_t
 			sleep(sleep_time);
 		}
 	}
-	fprintf(stdout, "EXITING: Level %d process with pid=%d, child of ppid=%d.\n", current_level, getpid(), getppid());
+	fprintf(stdout, "EXITING: Level %d process with pid=%d, child of ppid=%d\n", current_level, getpid(), getppid());
 }
 
 int main (int argc, char **argv) {
@@ -105,11 +105,13 @@ int main (int argc, char **argv) {
 				i++;
 				if (num_levels > 4) {
 					fprintf(stderr, "Error: Number of levels must be at most 4\n");
+					fprintf(stderr, "%s", usage_string);
 					return 0;
 				}
 			}
 			else {
 				fprintf(stderr, "Error: No value for -N\n");
+				fprintf(stderr, "%s", usage_string);
 				return 0;
 			}
 		}
@@ -120,11 +122,13 @@ int main (int argc, char **argv) {
 				i++;
 				if (num_children > 3) {
 					fprintf(stderr, "Error: Number of children must be at most 3\n");
+					fprintf(stderr, "%s", usage_string);
 					return 0;
 				}
 			}
 			else {
 				fprintf(stderr, "Error: No value for -M\n");
+				fprintf(stderr, "%s", usage_string);
 				return 0;
 			}
 		}
@@ -141,6 +145,7 @@ int main (int argc, char **argv) {
 			}
 			else {
 				fprintf(stderr, "Error: No value for -s\n");
+				fprintf(stderr, "%s", usage_string);
 				return 0;
 			}
 		}
@@ -154,6 +159,7 @@ int main (int argc, char **argv) {
 	// Pause AND sleep have been specified
 	if (sleep_time_specified == 1 && pause == 1) {
 		fprintf(stderr, "Error: -p and -s both specified\n");
+		fprintf(stderr, "%s", usage_string);
 		return 0;
 	}
 	build_tree(num_levels, num_children, pause, sleep_time);
