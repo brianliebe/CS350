@@ -85,7 +85,7 @@ int main (int argc, char **argv) {
 			void *relative_ptr = ptr + ((procs - process_number) * sizeof(int));
 			process_id = getpid();
 			memcpy(relative_ptr, &process_id, sizeof(process_id));
-			
+
 			// If it's the last process created, write "done" to named pipe and break.
 			if (process_number == 1) {
 				fd = open(myfifo, O_WRONLY);
