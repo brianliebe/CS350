@@ -99,7 +99,7 @@ int optimal(int pages[], int length){
 
 
 int main(int argc, char* argv[]){
-
+/*
         char *fileName = "pages.txt";
         FILE *f1;
         int *pages = malloc(sizeof(int) * 100);
@@ -123,7 +123,7 @@ int main(int argc, char* argv[]){
         }
 
         fclose(f1);
-
+*/
 
         int pages[7];
         pages[0] = 1;
