@@ -1,0 +1,29 @@
+NAME: Brian Liebe
+PARTNER: None
+
+Question 1. 
+Helgrind wanrs that there's a possible data race from thread 1 - conflicting with thread 2. It also says that there are no locks held (which would fix this race condition). It does inform that the race condition stems off the variable "balance", which is helpful. I also gives some thorough information about the thread being created. It appears to point to the correct lines of code.
+
+Question 2.
+Removing one of the conflicting lines removes all race conditions, which makes sense. Adding a lock around just one of the lines doesn't fix any problems, and there are still race conditions. Putting a lock around both will remove all issues (as expected).
+
+Question 3.
+Depending on the order of the mutexes being locked, one of the threads may get stuck and cannot continue, which in turn basically makes both threads completely stuck because each thread has a lock for ONE of the mutexes, not for both. So they're both stuck and cannot continue and we're at a deadlock.
+
+Question 4.
+Helgrind observes that locks are acquired in a bad order. They must be acquired in the correct order or else a deadlock can occur.
+
+Question 5.
+Helgrind gives the same error, but in reality it shouldn't. Since the "g" mutex is being locked, there will be no possibility of getting in a deadlock since only one thread could even lock them at one time. This shows that programs like Helgrind aren't perfect for error-checking, and we really should understand everything ourselves.
+
+Question 6.
+This creates a busy wait for the main thread. If the new thread takes a long time to execute, we're basically running instructions to check the value of done for no reason. That while loop is not efficient in any way.
+
+Question 7.
+Helgrind reports a possible race condition, but it's wrong. It thinks that it's wrong because we're accessing "done", but in reality the parent thread isn't changing the value, just reading it, so there shouldn't be an issue. However, this is bad code and we should be using a condition variable.
+
+Question 8.
+This is preferred because it's much better on performance (reduce busy waiting) and generally just better practice. It will be just as "correct" as the version without condition variables, but it's always better to use CVs rather than to busy wait, even if the busy waiting is minimal. It's also better practice to use locks/CVs/semaphores whenever threads are used. Also, Helgrind like CVs much more!
+
+Question 9.
+It prints no errors, as expected. This is an advantage of using CVs.
