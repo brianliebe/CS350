@@ -93,16 +93,71 @@ int fifo(int pages[], int length){
                         temp[((pageFaults - 1) % blocks)]= pages[i];
                 }
         }
-        cout << "Page faults (FIFO):\t " << pageFaults << endl;
+        cout << "Page faults (FIFO - " << blocks << " blocks):\t " << pageFaults << endl;
         return 0;
-
-
 }
 
-int optimal(int pages[], int length){
+void optimal(char *filename, int blocks){
+        int pageFaults = 0;
+        vector<int> accesses;
+        vector<int> cache;
+        ifstream input(filename);
 
-        return 0;
+        // read the file, add ints to a vector
+        string value;
+        while (getline(input, value)) {
+                accesses.push_back(atoi(value.c_str()));
+        }
+        reverse(accesses.begin(), accesses.end()); // reverse it so we pop the first value
 
+        while (accesses.size()) {
+                int page = accesses.at(accesses.size() - 1);
+                accesses.pop_back();
+
+                // try to find the value in the cache
+                bool found_in_cache = false;
+                for (unsigned int i = 0; i < cache.size(); i++) {
+                        if (cache[i] == page) {
+                                found_in_cache = true;
+                                break;
+                        }
+                }
+
+                // if it's not there, we have to add it
+                if (!found_in_cache) {
+                        pageFaults++;
+
+                        // if the cache isn't full, just push it
+                        if ((int)cache.size() < blocks) {
+                                cache.push_back(page);
+                        }
+
+                        // replace the one that will be accessed furthest in the future
+                        else {
+                                int distance_to_next_match[cache.size()]; // save these indexes in an array
+                                for (unsigned int i = 0; i < cache.size(); i++) {
+                                        distance_to_next_match[i] = accesses.size(); // set as max distance (aka it's never found again)
+                                        for (int j = (int)accesses.size() - 1; j >= 0; j--) { // move backwards through the accesses
+                                                if (accesses[j] == cache[i]) {
+                                                        distance_to_next_match[i] = (accesses.size() - j); // set the index we have a match at
+                                                        break;
+                                                } 
+                                        }
+                                }
+                                // here, just find the furthest distance of all our cache entries
+                                int furthest_index = 0;
+                                int furthest_distance = distance_to_next_match[0];
+                                for (unsigned int i = 0; i < cache.size(); i++) {
+                                        if (distance_to_next_match[i] > furthest_distance) {
+                                                furthest_distance =  distance_to_next_match[i];
+                                                furthest_index = i;
+                                        }
+                                }
+                                cache.at(furthest_index) = page;
+                        }
+                }
+        }
+        cout << "Page faults (OPT " << blocks << " blocks):\t " << pageFaults << endl;
 }
 
 void least_recently_used(char *filename, int blocks) {
@@ -162,7 +217,7 @@ void least_recently_used(char *filename, int blocks) {
                         }
                 }
         }
-        cout << "Page faults (LRU):\t " << pageFaults << endl;
+        cout << "Page faults (LRU " << blocks << " blocks):\t " << pageFaults << endl;
 }
 
 void random_policy(char *filename, int blocks) {
@@ -205,36 +260,11 @@ void random_policy(char *filename, int blocks) {
                         }
                 }
         }
-        cout << "Page faults (RAND):\t " << pageFaults << endl;
+        cout << "Page faults (RAND " << blocks << " blocks):\t " << pageFaults << endl;
 }
 
 
 int main(int, char* argv[]){
-/*
-        char *fileName = "pages.txt";
-        FILE *f1;
-        int *pages = malloc(sizeof(int) * 100);
-        int numberOfIntegers = 100;
-
-        //Read the file
-        int a;
-        f1 = fopen(fileName, "r");
-        fscanf(f1, "%d", &a);
-        fclose(f1);
-
-        numberOfIntegers = a;
-
-        int k = 0;
-        int number;
-
-        while(k < numberOfIntegers){
-                fscanf(f1, "%d", &number);
-                pages[k] = number;
-                k++;
-        }
-
-        fclose(f1);
-*/
 
         int pages[7];
         pages[0] = 1;
@@ -249,16 +279,18 @@ int main(int, char* argv[]){
         int length = (sizeof(pages)/sizeof(pages[0]));
         //First In First Out Replacement Policy
         fifo(pages, length);
+
         //Optimal Replacement Policy
-        optimal(pages, length);
+        for (int i = 5; i <= 100; i += 5) {
+                optimal(argv[1], i);
+        }
         // LRU Replacement Policy
-        least_recently_used(argv[1], 5);
+        for (int i = 5; i <= 30; i += 5) {
+                least_recently_used(argv[1], i);
+        }
         // Random Replacement Policy
-        random_policy(argv[1], 5);
-
-
-
-
-        //
+        for (int i = 5; i <= 30; i += 5) {
+                random_policy(argv[1], i);
+        }
         return 0;
 }
