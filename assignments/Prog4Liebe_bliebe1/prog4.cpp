@@ -52,49 +52,8 @@
 
 using namespace std;
 
-int fifo(int pages[], int length){
-        int pageFaults = 0;
-
-        int blocks = 5;
-
-        int temp[blocks];
-
-        //This is to initialize the temp array which will basically be used to compare
-        //pages numbers against the pages[] array
-        for(int i = 0; i < blocks; i++){
-                temp[blocks] = -1;
-        }
-
-        for(int i = 0; i < length; i++){
-                //This variable indicates if the page number entry is new or not
-                int j = 0;
-                for(int m = 0; m < blocks; m++){
-                        //If the first page number is equal to the first slot in the block
-                        //decrease the amount of pageFault so that you can just increment resulting
-                        //in a net of zero pageFaults
-                        if(pages[i] == temp[m]){
-                                j++;
-                                pageFaults--;
-                        }
-                }
-                pageFaults++;
-                //If there is a page fault, that means that there will be a new page number entry
-                //thus temp[i] will contain that new page
-                //j must equal 0 because this is a new entry and requires a new space
-                //So pageFaults gives an idea of how many new entries there are
-                //If there are still more block space available, then the page number will
-                //go to the block spot as normal
-                if((pageFaults <= blocks) && (j == 0)){
-                        temp[i] = pages[i];
-                }
-                //Otherwise if there are more entries than there are blocks, this will move the
-                //first page out and put the new page in
-                else if(j == 0){
-                        temp[((pageFaults - 1) % blocks)]= pages[i];
-                }
-        }
-        cout << "Page faults (FIFO - " << blocks << " blocks):\t " << pageFaults << endl;
-        return 0;
+void print_with_formatting(int pageFaults, string type, int blocks) {
+        cout << "Page faults (" << type << " " << blocks << " blocks):\t " << pageFaults << endl;
 }
 
 void optimal(char *filename, int blocks){
@@ -157,7 +116,7 @@ void optimal(char *filename, int blocks){
                         }
                 }
         }
-        cout << "Page faults (OPT " << blocks << " blocks):\t " << pageFaults << endl;
+	print_with_formatting(pageFaults, "OPT", blocks);
 }
 
 void least_recently_used(char *filename, int blocks) {
@@ -217,7 +176,50 @@ void least_recently_used(char *filename, int blocks) {
                         }
                 }
         }
-        cout << "Page faults (LRU " << blocks << " blocks):\t " << pageFaults << endl;
+	print_with_formatting(pageFaults, "LRU", blocks);
+}
+
+void fifo(char *filename, int blocks){
+        int pageFaults = 0;
+        vector<int> accesses;
+	vector<int> cache;
+        ifstream input(filename);
+
+        // read the file, add ints to a vector
+        string value;
+        while (getline(input, value)) {
+                accesses.push_back(atoi(value.c_str()));
+        }
+        reverse(accesses.begin(), accesses.end()); // reverse it so we pop the first value
+
+        while(accesses.size()){
+		// get the last (first) value from the vector
+		int page = accesses.at(accesses.size() - 1);
+		accesses.pop_back();
+
+		// try to find it in the cache
+		bool found_in_cache = false;
+		for (unsigned int j = 0; j < cache.size(); j++) {
+			if (page == cache[j]) {
+				found_in_cache = true;
+				break;
+			}
+		}
+		if (!found_in_cache) {
+			// if it's not found, we need to add it
+			pageFaults++;			
+			if ((int)cache.size() < blocks) {
+				// if the cache isn't full, add it
+				cache.push_back(page);
+			}
+			else {
+				// if the cache is full, remove the first value (oldest), and push the new page
+				cache.erase(cache.begin() + 0);
+				cache.push_back(page);
+			}
+		}
+        }
+	print_with_formatting(pageFaults, "FIFO", blocks);
 }
 
 void random_policy(char *filename, int blocks) {
@@ -260,37 +262,34 @@ void random_policy(char *filename, int blocks) {
                         }
                 }
         }
-        cout << "Page faults (RAND " << blocks << " blocks):\t " << pageFaults << endl;
+	print_with_formatting(pageFaults, "RAND", blocks);
+}
+
+void clock_policy(char *filename, int blocks) {
+
 }
 
 
 int main(int, char* argv[]){
-
-        int pages[7];
-        pages[0] = 1;
-        pages[1] = 2;
-        pages[2] = 3;
-        pages[3] = 4;
-        pages[4] = 5;
-        pages[5] = 6;
-        pages[6] = 7;
-
-        //Length of the page array so that I can pass it on to the algorithm functions
-        int length = (sizeof(pages)/sizeof(pages[0]));
-        //First In First Out Replacement Policy
-        fifo(pages, length);
-
         //Optimal Replacement Policy
         for (int i = 5; i <= 100; i += 5) {
                 optimal(argv[1], i);
         }
         // LRU Replacement Policy
-        for (int i = 5; i <= 30; i += 5) {
+        for (int i = 5; i <= 100; i += 5) {
                 least_recently_used(argv[1], i);
         }
+	// First-in-first-out Replacement Policy
+	for (int i = 5; i <= 100; i += 5) {
+                fifo(argv[1], i);
+        }
         // Random Replacement Policy
-        for (int i = 5; i <= 30; i += 5) {
+        for (int i = 5; i <= 100; i += 5) {
                 random_policy(argv[1], i);
+        }
+	// Clock Replacement Policy
+        for (int i = 5; i <= 100; i += 5) {
+                clock_policy(argv[1], i);
         }
         return 0;
 }
