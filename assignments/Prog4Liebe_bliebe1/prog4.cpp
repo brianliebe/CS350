@@ -101,12 +101,12 @@ int fifo(int pages[], int length){
 
 int optimal(int pages[], int length){
 
+        return 0;
 
 }
 
-int least_recently_used(char *filename) {
+void least_recently_used(char *filename, int blocks) {
         int pageFaults = 0;
-        int blocks = 5;
         vector<int> accesses;
         vector<pair<int, int>> cache; // <page, time>
         ifstream input(filename);
@@ -139,7 +139,7 @@ int least_recently_used(char *filename) {
                 // if we found the page in the cache, increment all other page/time pairs by one, unless it was already less recently used
                 if (index_of_found_page != -1) {
                         for (unsigned int i = 0; i < cache.size(); i++) {
-                                if (i != index_of_found_page && cache[i].second < value_of_found_page) {
+                                if ((int)i != index_of_found_page && cache[i].second < value_of_found_page) {
                                         cache[i].second++;
                                 }
                         }
@@ -156,7 +156,7 @@ int least_recently_used(char *filename) {
                                         cache[i].second = 0;
                                 }
                         }
-                        if (cache.size() < blocks) {
+                        if ((int)cache.size() < blocks) {
                                 // if the cache wasn't full yet, we just add it
                                 cache.push_back(make_pair(page, 0));
                         }
@@ -165,8 +165,51 @@ int least_recently_used(char *filename) {
         cout << "Page faults (LRU):\t " << pageFaults << endl;
 }
 
+void random_policy(char *filename, int blocks) {
+        int pageFaults = 0;
+        vector<int> accesses;
+        vector<int> cache;
+        ifstream input(filename);
 
-int main(int argc, char* argv[]){
+        srand(time(NULL));
+
+        // read the file, add ints to a vector
+        string value;
+        while (getline(input, value)) {
+                accesses.push_back(atoi(value.c_str()));
+        }
+        reverse(accesses.begin(), accesses.end()); // reverse it so we pop the first value
+
+        while (accesses.size()) {
+                int page = accesses.at(accesses.size() - 1);
+                accesses.pop_back();
+
+                // check to see if the page is already in the cache
+                bool found_in_cache = false;
+                for (unsigned int i = 0; i < cache.size(); i++) {
+                        if (cache[i] == page) {
+                                // if it is, we're done
+                                found_in_cache = true;
+                                break;
+                        }
+                }
+                if (!found_in_cache) {
+                        // if it's not in the cache we need to add it
+                        pageFaults++;
+                        if ((int)cache.size() < blocks) {
+                                cache.push_back(page); // cache wasn't full, just push
+                        }
+                        else {
+                                int random_index = rand() % blocks; // randomly replace something
+                                cache[random_index] = page;
+                        }
+                }
+        }
+        cout << "Page faults (RAND):\t " << pageFaults << endl;
+}
+
+
+int main(int, char* argv[]){
 /*
         char *fileName = "pages.txt";
         FILE *f1;
@@ -209,7 +252,9 @@ int main(int argc, char* argv[]){
         //Optimal Replacement Policy
         optimal(pages, length);
         // LRU Replacement Policy
-        least_recently_used(argv[1]);
+        least_recently_used(argv[1], 5);
+        // Random Replacement Policy
+        random_policy(argv[1], 5);
 
 
 

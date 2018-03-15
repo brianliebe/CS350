@@ -68,12 +68,12 @@ int main(int argc, char **argv) {
 		vector<int> accesses;
 
 		// add 80% of N from the often used vector
-		for (unsigned int i = 0; i < (num_access*4)/5; i++) {
+		for (int i = 0; i < (num_access*4)/5; i++) {
 			accesses.push_back(often[rand() % often.size()]);
 		}
 
 		// add the remaining 20% of N from the scarcely used vector 
-		for (unsigned int i = 0; i < num_access/5; i++) {
+		for (int i = 0; i < num_access/5; i++) {
 			accesses.push_back(scarce[rand() % scarce.size()]);
 		}
 
