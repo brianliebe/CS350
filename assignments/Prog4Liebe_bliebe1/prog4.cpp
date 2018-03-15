@@ -53,7 +53,9 @@
 using namespace std;
 
 void print_with_formatting(int pageFaults, string type, int blocks) {
-        cout << "Page faults (" << type << " " << blocks << " blocks):\t " << pageFaults << endl;
+	int hitRate = (int)((10000 - pageFaults) / (float)10000 * 100);        
+	cout << "Page faults (" << type << " " << blocks << " blocks):\t " << pageFaults << "\t Hit rate: " << hitRate << "%" << endl;
+	// cout << hitRate << endl;
 }
 
 void optimal(char *filename, int blocks){
@@ -266,28 +268,65 @@ void random_policy(char *filename, int blocks) {
 }
 
 void clock_policy(char *filename, int blocks) {
+        int pageFaults = 0;
+        vector<int> accesses;
+        vector<int> cache;
+        ifstream input(filename);
 
+        // read the file, add ints to a vector
+        string value;
+        while (getline(input, value)) {
+                accesses.push_back(atoi(value.c_str()));
+        }
+        reverse(accesses.begin(), accesses.end()); // reverse it so we pop the first value
+
+	vector<pair<int, bool>> pages;
+	for (int i = 0; i < 100; i++) pages.push_back(make_pair(i, false));
+
+	while (accesses.size()) {
+		int page = accesses.at(accesses.size() - 1);
+		accesses.pop_back();
+
+		bool found_in_cache = false;
+		for (unsigned int i = 0; i < cache.size(); i++) {
+			if (page == cache[i]) {
+				found_in_cache = true;
+				break;
+			}
+		}
+
+		if (!found_in_cache) {
+			pageFaults++;
+			
+		}
+	}
+	print_with_formatting(pageFaults, "CLCK", blocks);
 }
 
 
 int main(int, char* argv[]){
         //Optimal Replacement Policy
+	cout << "Optimal Replacement Policy" << endl;
         for (int i = 5; i <= 100; i += 5) {
                 optimal(argv[1], i);
         }
         // LRU Replacement Policy
+	cout << "\nLeast-recently-used Replacement Policy" << endl;
         for (int i = 5; i <= 100; i += 5) {
                 least_recently_used(argv[1], i);
         }
 	// First-in-first-out Replacement Policy
+	cout << "\nFIFO Replacement Policy" << endl;
 	for (int i = 5; i <= 100; i += 5) {
                 fifo(argv[1], i);
         }
         // Random Replacement Policy
+	cout << "\nRandom Replacement Policy" << endl;
         for (int i = 5; i <= 100; i += 5) {
                 random_policy(argv[1], i);
         }
 	// Clock Replacement Policy
+	cout << "\nClock Replacement Policy" << endl;
         for (int i = 5; i <= 100; i += 5) {
                 clock_policy(argv[1], i);
         }
