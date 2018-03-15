@@ -7,4 +7,4 @@ prog4: prog4.cpp
 	g++ prog4.cpp -o prog4
 
 clean:
-	rm -f generator
+	rm -f generator prog4
