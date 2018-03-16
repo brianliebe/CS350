@@ -268,65 +268,6 @@ void random_policy(char *filename, int blocks) {
 }
 
 void clock_policy(char *filename, int blocks) {
-	/*
-        int pageFaults = 0;
-        vector<int> accesses;
-        vector<int> cache;
-        ifstream input(filename);
-
-        // read the file, add ints to a vector
-        string value;
-        while (getline(input, value)) {
-                accesses.push_back(atoi(value.c_str()));
-        }
-        reverse(accesses.begin(), accesses.end()); // reverse it so we pop the first value
-
-        // set the pages to all be false (not used recently)
-	vector<pair<int, bool>> pages;
-	for (int i = 0; i < 100; i++) pages.push_back(make_pair(i, false));
-        int hand_in_clock = 0;
-
-	while (accesses.size()) {
-		int page = accesses.at(accesses.size() - 1);
-		accesses.pop_back();
-
-                // look for page in cache
-		bool found_in_cache = false;
-		for (unsigned int i = 0; i < cache.size(); i++) {
-			if (page == cache[i]) {
-                                pages[i].second = true; // set it to recently used (should already be this)
-				found_in_cache = true;
-				break;
-			}
-		}
-
-		if (!found_in_cache) {
-			pageFaults++;
-                        if ((int)cache.size() < blocks) {
-                                cache.push_back(page); // if cache isn't full, add it
-                        }
-                        else {
-                                while (true) {
-                                        if (pages[hand_in_clock].second == true) {
-                                                // if it's recently used, clear it but move on
-                                                pages[hand_in_clock].second = false;
-                                                hand_in_clock++;
-                                        }
-                                        else {
-                                                // if it's clear, we'll add this one
-                                                pages[hand_in_clock].second = true;
-                                                cache.erase(cache.begin() + 0);
-                                                cache.push_back(hand_in_clock);
-                                                break;
-                                        }
-                                        if (hand_in_clock == 100) hand_in_clock = 0; // reset clock
-                                }
-                        }
-		}
-	}
-	print_with_formatting(pageFaults, "CLCK", blocks);
-}
-*/
         int pageFaults = 0;
         vector<int> accesses;
         ifstream input(filename);
