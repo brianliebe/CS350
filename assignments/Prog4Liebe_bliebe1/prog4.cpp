@@ -54,8 +54,8 @@ using namespace std;
 
 void print_with_formatting(int pageFaults, string type, int blocks) {
 	int hitRate = (int)((10000 - pageFaults) / (float)10000 * 100);        
-	cout << "Page faults (" << type << " " << blocks << " blocks):\t " << pageFaults << "\t Hit rate: " << hitRate << "%" << endl;
-	// cout << hitRate << endl;
+	// cout << "Page faults (" << type << " " << blocks << " blocks):\t " << pageFaults << "\t Hit rate: " << hitRate << "%" << endl;
+	cout << hitRate << endl;
 }
 
 void optimal(char *filename, int blocks){
@@ -327,10 +327,8 @@ void clock_policy(char *filename, int blocks) {
 	print_with_formatting(pageFaults, "CLCK", blocks);
 }
 */
-	
         int pageFaults = 0;
         vector<int> accesses;
-        vector<int> cache;
         ifstream input(filename);
 	int clockValue = 0;
 
@@ -341,83 +339,46 @@ void clock_policy(char *filename, int blocks) {
         }
         reverse(accesses.begin(), accesses.end()); // reverse it so we pop the first value
 
-	vector<pair<int, bool> > pages;
-	for (int i = 0; i < 100; i++){
-		pages.push_back(make_pair(i, false));
-	}
-	
+	vector<pair<int, bool> > cache;
+
 	while (accesses.size()) {
 		int page = accesses.at(accesses.size() - 1);
 		accesses.pop_back();
-		
+
 		bool found_in_cache = false;
 		for (unsigned int i = 0; i < cache.size(); i++) {
-			if (page == cache[i]) {
+			if (page == cache[i].first) {
 				found_in_cache = true;
-				pages[i].second = true;
-				//cout << pages[1].second << endl;
-				
-				
+				cache[i].second = true;
+				break;
 			}
-			
 		}
 
 		if (!found_in_cache) {
 			pageFaults++;
 			if((int) cache.size() < blocks){
-				cache.push_back(page); 
-				pages[page].second = true;
-				
-					
+				cache.push_back(make_pair(page, true));
+				clockValue++;
 			}
-			
 			//BRAND NEW ENTRY AND NEEDS REPLACEMENT
-			else{	
-				/*
+			else{
+
 				while (true) {
 					if (clockValue == blocks) clockValue = 0;
-					if (pages[cache[clockValue]].second == false && clockValue < blocks) {
-						pages[page].second = true;
-						cache[clockValue] = page;
+					if (cache[clockValue].second == false) {
+						cache[clockValue].first = page;
+						cache[clockValue].second = true;
+						clockValue++;
 						break;
 					}
-					else if (pages[cache[clockValue]].second == true && clockValue < blocks) {
-						pages[cache[clockValue]].second = false;
+					else {
+						cache[clockValue].second = false;
 					}
 					clockValue++;
 				}
-				*/
-			
-				if(pages[page].second == false && clockValue <= blocks){
-					pages[page].second = true;
-					
-					pages[cache[clockValue]].second = false;
-					cache[clockValue] = page;
-					
-					
-					
-					//cout << clockValue << endl;					
-					
-				
-				}
-				if(pages[page].second == true && clockValue < blocks){
-					pages[page].second = false;
-					
-					clockValue++;
-					
-					
-				}	
-				if(clockValue >=  blocks ){
-				clockValue = 0;
-				
-				}
 			}
-			
-			
 		}
-		
 	}
-	
 	print_with_formatting(pageFaults, "CLCK", blocks);
 }
 
