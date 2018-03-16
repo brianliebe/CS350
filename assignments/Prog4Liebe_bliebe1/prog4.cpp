@@ -373,6 +373,20 @@ void clock_policy(char *filename, int blocks) {
 			
 			//BRAND NEW ENTRY AND NEEDS REPLACEMENT
 			else{	
+				/*
+				while (true) {
+					if (clockValue == blocks) clockValue = 0;
+					if (pages[cache[clockValue]].second == false && clockValue < blocks) {
+						pages[page].second = true;
+						cache[clockValue] = page;
+						break;
+					}
+					else if (pages[cache[clockValue]].second == true && clockValue < blocks) {
+						pages[cache[clockValue]].second = false;
+					}
+					clockValue++;
+				}
+				*/
 			
 				if(pages[page].second == false && clockValue <= blocks){
 					pages[page].second = true;
