@@ -1,3 +1,5 @@
+//Names: Brian Liebe (bliebe1) & Jonathan Chang (jchang66)
+
 all: generator prog4
 
 generator: generator.cpp
