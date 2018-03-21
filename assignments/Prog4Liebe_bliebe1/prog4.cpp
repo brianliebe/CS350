@@ -2,19 +2,13 @@
 //Should lead to the least misses
 //So it evicts the page that it used last
 
-
 //Least Recently USed
 //Evicts a page that has been used least recently
 //Based on frequency and recency
 //*Upon each page access, update data structure to move this page to the front
 
-
-
-
 //First in First Out
 //Evicts the page that was first in
-
-
 
 //Random
 //Should be a little better than FIFO
@@ -34,8 +28,8 @@
 //If page has been modified (dirty), it must be written back to disk to evict it
 //Have a modified bit that is set anytime a page is written
 //Clock algorithm checks for both use bit and modified bit
-/* ---------------------------------------------------------------------------------------*/
 
+/* ---------------------------------------------------------------------------------------*/
 
 #include <stdio.h>
 #include <stdlib.h>
