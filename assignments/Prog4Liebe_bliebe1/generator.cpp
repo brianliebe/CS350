@@ -93,7 +93,13 @@ int main(int argc, char **argv) {
 			if (value == num_pages) value = 0;
 		}
 	}
+	else {
+		cout << "\t Invalid number, choose a number from 0-2" << endl;
+		cout << "\t 0 for no-locality, 1 for 80-20, and 2 for looping" << endl;
+		
+	}
 	// close output
 	output.close();
+	return 0;
 }
 
