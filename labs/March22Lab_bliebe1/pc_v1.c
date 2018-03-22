@@ -4,6 +4,7 @@
 
 int buffer;
 int count = 0;
+int g_loops;
 
 void put(int value) {
 	printf("putting\n");
@@ -22,7 +23,7 @@ int get() {
 void *producer (void *arg) {
 	printf("producer\n");
 	int i;
-	int loops = *(int*)arg;
+	int loops = g_loops;
 	for (i = 0; i < loops; i++) put(i);
 	return NULL;
 }
@@ -37,10 +38,18 @@ void *consumer (void *arg) {
 	return NULL;
 }
 
+void *test (void *arg) {
+	printf("TEST\n");
+	return NULL;
+}
+
 int main() {
 	pthread_t p, c;
-	int loops = 10;
-	pthread_create(&p, NULL, producer, &loops);
+	g_loops = 10;
+	pthread_create(&p, NULL, producer, NULL);
 	pthread_create(&c, NULL, consumer, NULL);
+
+	pthread_join(p, NULL);
+	pthread_join(c, NULL);
 	return 0;
 }

@@ -24,5 +24,7 @@ void free_mem (void *ptr, int size) {
 }
 
 int main () {
-
+	// do we do anything here?
+	printf("Done.\n");
+	return 0;
 }

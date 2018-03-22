@@ -1,4 +1,4 @@
-all:
+all: fig1 fig2 fig3 fig3_poor1 fig3_poor2 pc_v1 fig6_broken fig8_broken2 fig10_finally fig1112_final fig13_covering
 
 fig1: fig1.c
 	gcc fig1.c -o fig1 -pthread

@@ -23,7 +23,7 @@ int get() {
 
 void *producer (void *arg) {
 	int i;
-	int loops = *(int*)arg;
+	int loops = *(int *)arg;
 	for (i = 0; i < loops; i++) {
 		pthread_mutex_lock(&mutex);
 		while (count == 1) pthread_cond_wait(&empty, &mutex);
@@ -52,6 +52,8 @@ int main() {
 	pthread_t p, c;
 	int loops = 10;
 	pthread_create(&p, NULL, producer, &loops);
-	pthread_create(&c, NULL, consumer, NULL);
+	pthread_create(&c, NULL, consumer, &loops);
+	pthread_join(p, NULL);
+	pthread_join(c, NULL);
 	return 0;
 }

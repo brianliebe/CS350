@@ -51,5 +51,7 @@ int main() {
 	int loops = 10;
 	pthread_create(&p, NULL, producer, &loops);
 	pthread_create(&c, NULL, consumer, &loops);
+	pthread_join(p, NULL);
+	pthread_join(c, NULL);
 	return 0;
 }
