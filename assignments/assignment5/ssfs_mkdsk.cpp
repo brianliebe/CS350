@@ -35,10 +35,17 @@ int main (int argc, char **argv)
 	disk_file.seekp((num_blocks * block_size) - 1);
 	disk_file.write("", 1);
 
-	// write inode map to file
+	// write superblock
 	disk_file.seekp(0);
+	disk_file.write((char*)&num_blocks, sizeof(num_blocks));
+	disk_file.write((char*)&block_size, sizeof(block_size));
+
+	// write inode map to file
+	int start_location = 1 * block_size;
+	disk_file.seekp(start_location);
 	int max_entries = 256;
-	printf("%d\n", max_entries);
+	int inode_map_blocks = (max_entries * 36) / 128;
+	if ((max_entries * 26) % 128 > 0) inode_map_blocks++;
 
 	for (int i = 0; i < max_entries; i++)
 	{
@@ -53,11 +60,13 @@ int main (int argc, char **argv)
 	}
 
 	// write free block list to file
-	disk_file.seekp(72 * block_size);
-	int blocks_in_use = ((num_blocks) * 4) / block_size;
-	printf("%d\n", blocks_in_use);
+	start_location = (1 + inode_map_blocks) * block_size;
+	disk_file.seekp(start_location);
 
-	for (int i = blocks_in_use + 72; i < num_blocks; i++) 
+	int free_list_blocks = ((num_blocks) * 4) / block_size;
+	if ((num_blocks * 4) % block_size > 0) free_list_blocks++;
+
+	for (int i = free_list_blocks + inode_map_blocks + 1; i < num_blocks; i++) 
 	{
 		// start at the first block after the free block list
 		disk_file.write((char*)&i, sizeof(i));
