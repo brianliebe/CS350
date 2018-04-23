@@ -1,6 +1,9 @@
 #ifndef SSFS_FILE_H
 #define SSFS_FILE_H
 
+#include <vector>
+#include <string>
+
 typedef struct indirect_block {
 	int **direct_blocks;
 } indirect_block;
@@ -17,14 +20,10 @@ typedef struct inode {
 	int double_indirect_block_pointer;	
 } inode;
 
-typedef struct inode_map {
+typedef struct Inode_Map {
 	// each entry is 36 bytes
-	std::string *file_names;
-	int** inode_locations;
-} inode_map;
-
-typedef struct free_block_list {
-	int **free_blocks;
-} free_block_list;
+	std::vector<std::string> file_names;
+	std::vector<int> inode_locations;
+} Inode_Map;
 
 #endif

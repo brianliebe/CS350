@@ -1,10 +1,12 @@
+FLAGS=-std=c++11 -pthread
+
 all: ssfs_mkdsk ssfs
 
 ssfs_mkdsk: ssfs_mkdsk.cpp ssfs_file.h
-	g++ ssfs_mkdsk.cpp -o ssfs_mkdsk
+	g++ ssfs_mkdsk.cpp -o ssfs_mkdsk $(FLAGS)
 
 ssfs: ssfs.cpp
-	g++ ssfs.cpp -o ssfs
+	g++ ssfs.cpp -o ssfs $(FLAGS)
 
 clean:
 	rm -f ssfs_mkdsk ssfs

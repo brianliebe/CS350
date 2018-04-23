@@ -1,0 +1,2 @@
+CREATE file.txt
+WRITE file.txt k 0 7

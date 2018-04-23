@@ -1,0 +1,2 @@
+CREATE file2.txt
+WRITE file2.txt g 1 4

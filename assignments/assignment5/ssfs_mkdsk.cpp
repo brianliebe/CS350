@@ -3,6 +3,7 @@
 #include <cstring>
 #include <vector>
 #include <fstream>
+#include <cstdlib>
 #include "ssfs_file.h"
 
 using namespace std;
@@ -31,7 +32,7 @@ int main (int argc, char **argv)
 	}
 
 	// create empty disk
-	ofstream disk_file(disk_file_name, ios::binary | ios::out);
+	ofstream disk_file(disk_file_name.c_str(), ios::binary | ios::out);
 	disk_file.seekp((num_blocks * block_size) - 1);
 	disk_file.write("", 1);
 
@@ -44,8 +45,8 @@ int main (int argc, char **argv)
 	int start_location = 1 * block_size;
 	disk_file.seekp(start_location);
 	int max_entries = 256;
-	int inode_map_blocks = (max_entries * 36) / 128;
-	if ((max_entries * 26) % 128 > 0) inode_map_blocks++;
+	int inode_map_blocks = (max_entries * 36) / block_size;
+	if ((max_entries * 36) % block_size > 0) inode_map_blocks++;
 
 	for (int i = 0; i < max_entries; i++)
 	{
