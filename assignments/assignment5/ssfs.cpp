@@ -13,12 +13,49 @@
 
 using namespace std;
 
+//Need to access the inode map so that we can see if the file name exists in the file map
+//However, we cannot access it because it's not being declared in the scope of the create_file function
+//Need to find a way to make the create_file have access to the inode map so I created the check_existence which takes 
+//in the inode map and can just pass on the filename
+//func read_thread_ops doesn't have the inode map so it cannot be passed onto the check_existence if we replace create_file with 
+//check_existence(b) [line 168]
+
 void create_file(string filename)
 {
+  /*ofstream new_file;
+	new_file.open(filename);
+	new_file.close();*/
+}
+/*
+ void check_existence(vector<std::string> inode_map, string name){
+	/*vector<int>::iterator itr;
+	
+	if (find(inode_map->file_names.begin(), inode_map->file_names.end(), filename) != inode_map-file_names.end())
+		perror("File name already exists!");
+	}
+	else{
+		inode_map->file_names.push_back(name);
+		create_file(name);
+	} 
+} */
+
+
+void import_file(string ssfs_file, string unix_file){
+	/*ifstream unixFile;
+	ofstream ssfsFile;
+	unixFile.open(unix_file);
+	ssfsFile.open(ssfs_file);
+	
+	char ch;
+	while(!unixFile.eof()){
+		unixFile.get(ch);
+		ssfsFile<<ch;
+	}
+	unixFile.close();
+	ssfsFile.close();	*/
+
 	
 }
-
-void import_file(string ssfs_file, string unix_file);
 void cat_file(string filename);
 void delete_file(string filename);
 void write_to_file(string filename, char letter, int start_byte, int num_bytes);
