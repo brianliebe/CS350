@@ -116,7 +116,7 @@ void import_file(string ssfs_file, string unix_file){
 	/*ifstream unixFile;
 	ofstream ssfsFile;
 	unixFile.open(unix_file);
-	ssfsFile.open(ssfs_file);
+	ssfsFile.open(ssfs_file); // this is wrong, the ssfs_file is the new file we're creating within DISK
 	
 	char ch;
 	while(!unixFile.eof()){
@@ -151,7 +151,9 @@ void list_files()
 void shutdown_ssfs()
 {
 	force_close = true; // make sure this is set
-	
+	// need to copy the inode map back in
+	// need to copy the inodes back in
+	// data should already be set properly
 }
 
 void execute_commands(string disk_name) 
@@ -207,7 +209,7 @@ void execute_commands(string disk_name)
 	and those functions WON'T actually do anything. They'll just create Commands (holds block,
 	WRITE/READ, and the data) which will be performed by the scheduler thread. So each "command" function
 	will just add the Commands to a queue, and the other thread performs them. So each "command" function
-	should "figure out" what blocks need to be written to basic on what it's being asked to do.
+	should "figure out" what blocks need to be written to based on what it's being asked to do.
 */
 void read_thread_ops(string filename)
 {
