@@ -13,6 +13,47 @@
 
 using namespace std;
 
+/* GLOBAL VARIABLES */
+
+vector<Command*> commands;
+Inode_Map *inode_map;
+int *free_block_list;
+
+mutex command_mutex, data_mutex, freeblock_mutex, map_mutex; // make sure we have locks surrounding all thread-accessible data
+condition_variable cond;
+int threads_finished = 0;
+int total_threads = 0;
+
+int num_blocks = 0;
+int block_size = 0;
+bool force_close = false;
+
+/*
+	Returns an int location for the first free block in the free_block_list
+*/
+int getFreeBlockNumber() 
+{
+	unique_lock<mutex> lck(freeblock_mutex);
+	for (int i = 0; i < num_blocks; i++) 
+	{
+		if (free_block_list[i] != 0)
+		{
+			free_block_list[i] = 0;
+			lck.unlock();
+			return i;
+		}
+	}
+	lck.unlock();
+	return -1;
+}
+
+void addCommandToQueue(Command *bc) 
+{
+	unique_lock<mutex> lck(command_mutex);
+	commands.push_back(bc);
+	lck.unlock();
+}
+
 //Need to access the inode map so that we can see if the file name exists in the file map
 //However, we cannot access it because it's not being declared in the scope of the create_file function
 //Need to find a way to make the create_file have access to the inode map so I created the check_existence which takes 
@@ -20,16 +61,47 @@ using namespace std;
 //func read_thread_ops doesn't have the inode map so it cannot be passed onto the check_existence if we replace create_file with 
 //check_existence(b) [line 168]
 
+/*
+You're right, so I made the Inode_Map a global variable (inode_map). I already created the struct for it, so I re-wrote your code
+so that it used the existing struct (just for simplicity), but your code was fine. I think we should just return a true/false
+rather than calling one function that will just call another. Call check_existence from create_file and return an error depending on
+the boolean.
+*/
+
 void create_file(string filename)
 {
-  /*ofstream new_file;
+	/*
+	ofstream new_file;
 	new_file.open(filename);
-	new_file.close();*/
+	new_file.close();
+	*/
+
+	/* peudocode:
+	if (check_existence) -> continue
+	else -> return an error
+
+	inode = new inode() etc. // fill with the correct info for the file
+	Command *bc = new Command;
+	<save inode as a char*> -> put in bc
+	addCommandToQueue(bc);
+	*/
 }
-/*
- void check_existence(vector<std::string> inode_map, string name){
-	/*vector<int>::iterator itr;
-	
+
+ bool check_existence(string name)
+ {
+	unique_lock<mutex> lck(map_mutex);
+	for (unsigned int i = 0; i < inode_map->file_names.size(); i++)
+	{
+		if (inode_map->file_names[i] == name)
+		{
+			lck.unlock();
+			return true;
+		}
+	}
+	lck.unlock();
+	return false;
+	/*
+	vector<int>::iterator itr;
 	if (find(inode_map->file_names.begin(), inode_map->file_names.end(), filename) != inode_map-file_names.end())
 		perror("File name already exists!");
 	}
@@ -37,8 +109,8 @@ void create_file(string filename)
 		inode_map->file_names.push_back(name);
 		create_file(name);
 	} 
-} */
-
+	*/
+}
 
 void import_file(string ssfs_file, string unix_file){
 	/*ifstream unixFile;
@@ -56,55 +128,35 @@ void import_file(string ssfs_file, string unix_file){
 
 	
 }
-void cat_file(string filename);
-void delete_file(string filename);
-void write_to_file(string filename, char letter, int start_byte, int num_bytes);
-void read_from_file(string filename, int start_byte, int num_bytes);
-void list_files();
-void shutdown_ssfs();
-
-typedef struct Command 
+void cat_file(string filename)
 {
-	string command;
-	string file_name;
-	string unix_file;
-	char character;
-	int start_byte;
-	int num_bytes;
-} Command;
 
-typedef struct Basic_Command
+}
+void delete_file(string filename)
 {
-	// The scheduler can ONLY read and write entire blocks
-	string command; // "READ" or "WRITE"
-	int job_id;
-	int offset;
-	int block_size;
-	char *data;
-} Basic_Command;
 
-typedef struct Data
+}
+void write_to_file(string filename, char letter, int start_byte, int num_bytes)
 {
-	int job_id;
-	char *data;
-} Data;
 
-vector<Basic_Command*> commands;
-vector<Data*> read_data;
-vector<inode*> inodes;
-vector<int> free_block_list;
+}
+void read_from_file(string filename, int start_byte, int num_bytes)
+{
 
-mutex command_mutex, data_mutex;
-condition_variable cond;
-int threads_finished = 0;
-int total_threads = 0;
+}
+void list_files()
+{
 
-int num_blocks = 0;
-int block_size = 0;
+}
+void shutdown_ssfs()
+{
+	force_close = true; // make sure this is set
+	
+}
 
 void execute_commands(string disk_name) 
 {
-	while (true)
+	while (!force_close)
 	{
 		unique_lock<mutex> lck(command_mutex); // acquire the lock
 
@@ -119,7 +171,7 @@ void execute_commands(string disk_name)
 			// otherwise, wait for the condition variable (or 100 ms to recheck)
 			cond.wait_for(lck, chrono::milliseconds(100));
 		}
-		Basic_Command *command = commands.at(0);
+		Command *command = commands.at(0);
 		commands.erase(commands.begin()); // remove it from queue
 		lck.unlock();
 		
@@ -127,38 +179,41 @@ void execute_commands(string disk_name)
 		{
 			cout << "START: READ for job " << command->job_id << endl;
 			ifstream disk(disk_name.c_str(), ios::binary | ios::in);
-			char *buffer = new char [command->block_size];
-			disk.seekg(command->offset);
-			disk.read(buffer, command->block_size);
+			char *buffer = new char [block_size];
+			disk.seekg(command->block_id * block_size);
+			disk.read(buffer, block_size);
 			disk.close();
+			
+			cout << buffer << endl;
 
-			Data *temp_data = new Data;
-			temp_data->job_id = command->job_id;
-			temp_data->data = buffer;
-
-			unique_lock<mutex> data_lck(data_mutex);
-			read_data.push_back(temp_data);
-			data_lck.unlock();
 			cout << "STOP: READ for job " << command->job_id << endl;
 		}
 		if (command->command == "WRITE")
 		{
 			cout << "START: WRITE for job " << command->job_id << endl;
 			fstream disk(disk_name.c_str(), ios::binary | ios::out | ios::in);
-			disk.seekp(command->offset, ios::beg);
-			disk.write(command->data, command->block_size);
+			disk.seekp(command->block_id * block_size, ios::beg);
+			disk.write(command->data, block_size);
 			disk.close();
 			cout << "STOP: WRITE for job " << command->job_id << endl;
 			delete command->data;
 		}
+		delete command;
 	}
 }
 
+/*
+	Okay, so the idea here is that this (threaded) function will call create_file/import_file/etc 
+	and those functions WON'T actually do anything. They'll just create Commands (holds block,
+	WRITE/READ, and the data) which will be performed by the scheduler thread. So each "command" function
+	will just add the Commands to a queue, and the other thread performs them. So each "command" function
+	should "figure out" what blocks need to be written to basic on what it's being asked to do.
+*/
 void read_thread_ops(string filename)
 {
 	ifstream op_file(filename.c_str());
 	string line;
-	while (getline(op_file, line)) 
+	while (getline(op_file, line) && !force_close) 
 	{
 		string command = line.substr(0, line.find(" "));
 		if (command == "CREATE")
@@ -170,31 +225,49 @@ void read_thread_ops(string filename)
 		}
 		else if (command == "IMPORT") 
 		{
-
+			istringstream iss(line);
+			string a, b, c;
+			if (!(iss >> a >> b >> c)) { break; }
+			import_file(b, c);
 		}
 		else if (command == "CAT")
 		{
-
+			istringstream iss(line);
+			string a, b;
+			if (!(iss >> a >> b)) { break; }
+			cat_file(b);
 		}
 		else if (command == "DELETE")
 		{
-
+			istringstream iss(line);
+			string a, b;
+			if (!(iss >> a >> b)) { break; }
+			delete_file(b);
 		}
 		else if (command == "WRITE")
 		{
-
+			istringstream iss(line);
+			string a, b;
+			char c;
+			int d, e;
+			if (!(iss >> a >> b >> c >> d >> e)) { break; }
+			write_to_file(b, c, d, e);
 		}
 		else if (command == "READ") 
 		{
-
+			istringstream iss(line);
+			string a, b;
+			int c, d;
+			if (!(iss >> a >> b >> c >> d)) { break; }
+			read_from_file(b, c, d);
 		}
 		else if (command == "LIST")
 		{
-
+			list_files();
 		}
 		else if (command == "SHUTDOWN")
 		{
-
+			shutdown_ssfs();
 		}
 		else
 		{
@@ -261,7 +334,7 @@ int main(int argc, char **argv)
 	int inode_map_blocks = (256 * 36) / block_size;
 	if ((256 * 36) % block_size > 0) inode_map_blocks++;
 
-	Inode_Map *inode_map = new Inode_Map;
+	inode_map = new Inode_Map;
 	int other = 0;
 
 	for (int i = 0; i < 256; i++)
@@ -289,17 +362,14 @@ int main(int argc, char **argv)
 	int start_location = (1 + inode_map_blocks) * block_size;
 	disk.seekg(start_location);
 
-	while (true)
+	free_block_list = new int[num_blocks];
+
+	for (int i = 0; i < num_blocks; i++)
 	{
 		int temp_int;
 		disk.read(reinterpret_cast<char*>(&temp_int), sizeof(temp_int));
-		if (temp_int == -2) break;
-		if (temp_int != -1)
-		{
-			free_block_list.push_back(temp_int);
-		}
+		free_block_list[i] = temp_int;
 	}
-	cout << "Total free blocks: " << free_block_list.size() << endl;
 
 	disk.close();
 

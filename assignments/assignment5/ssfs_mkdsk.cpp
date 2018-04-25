@@ -69,22 +69,14 @@ int main (int argc, char **argv)
 
 	for (int i = free_list_blocks + inode_map_blocks + 1; i < num_blocks; i++) 
 	{
-		// start at the first block after the free block list
-		disk_file.write((char*)&i, sizeof(i));
+		// Write a 1 (free) for all blocks except the ones that have been allocated already
+		int temp_int = 1;
+		if (i < free_list_blocks + inode_map_blocks + 1)
+		{
+			temp_int = 0;
+		}
+		disk_file.write((char*)&temp_int, sizeof(temp_int));
 	}
-	int final_entry = -2;
-	disk_file.write((char*)&final_entry, sizeof(final_entry));
 
 	return 0;
 }
-//
-
-
-
-
-
-
-
-
-
-
