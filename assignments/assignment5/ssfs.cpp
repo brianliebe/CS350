@@ -67,27 +67,7 @@ so that it used the existing struct (just for simplicity), but your code was fin
 rather than calling one function that will just call another. Call check_existence from create_file and return an error depending on
 the boolean.
 */
-
-void create_file(string filename)
-{
-	/*
-	ofstream new_file;
-	new_file.open(filename);
-	new_file.close();
-	*/
-
-	/* peudocode:
-	if (check_existence) -> continue
-	else -> return an error
-
-	inode = new inode() etc. // fill with the correct info for the file
-	Command *bc = new Command;
-	<save inode as a char*> -> put in bc
-	addCommandToQueue(bc);
-	*/
-}
-
- bool check_existence(string name)
+bool check_existence(string name)
  {
 	unique_lock<mutex> lck(map_mutex);
 	for (unsigned int i = 0; i < inode_map->file_names.size(); i++)
@@ -111,6 +91,39 @@ void create_file(string filename)
 	} 
 	*/
 }
+void create_file(string filename)
+{
+	//UNFINISHED
+	if(inode_map->file_names.size() < 256){
+		if(check_existence(filename) == true){
+			perror("File name already exists!");
+		}
+		else{
+	
+			ofstream new_file;
+			new_file.open(filename);
+			new_file.close();
+			Inode *createInode = new Inode();
+			createInode->file_name = filename;
+			Command *bc = new Command();
+		}
+	}
+	else{
+		perror("Not enough space");
+	}
+		
+	/* peudocode:
+	if (check_existence) -> continue
+	else -> return an error
+
+	inode = new inode() etc. // fill with the correct info for the file
+	Command *bc = new Command;
+	<save inode as a char*> -> put in bc
+	addCommandToQueue(bc);
+	*/
+}
+
+ 
 
 void import_file(string ssfs_file, string unix_file){
 	/*ifstream unixFile;
@@ -128,13 +141,23 @@ void import_file(string ssfs_file, string unix_file){
 
 	
 }
+//Outputing the file to the stdout 
 void cat_file(string filename)
 {
+	char buf[256];
+	ifstream fileOpen(filename);
+	if(!fileOpen.is_open()){
+		cout << "Can't open";
+	}
+	while(fileOpen >> buf){
+		cout << buf << endl;
+	}
+	fileOpen.close();
 
 }
 void delete_file(string filename)
 {
-
+	
 }
 void write_to_file(string filename, char letter, int start_byte, int num_bytes)
 {
@@ -144,9 +167,13 @@ void read_from_file(string filename, int start_byte, int num_bytes)
 {
 
 }
+//Unless there's something I'm missing, I don't think we have a direct link between the inode map
+//and individual inodes. I think we can just put the inodes that are created into an array
+// and add/delete to it accordingly.
 void list_files()
-{
-
+{	/*
+	for(int i = 0; i < inode_map->file_names.size(); i++){
+		cout << "File name: " << file_names[i] << "," << "Size: " << */
 }
 void shutdown_ssfs()
 {

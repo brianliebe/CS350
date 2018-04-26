@@ -16,7 +16,9 @@ typedef struct Inode_Map {
 	// each entry is 36 bytes
 	std::vector<std::string> file_names;
 	std::vector<int> inode_locations;
+	
 } Inode_Map;
+
 
 typedef struct Command
 {
