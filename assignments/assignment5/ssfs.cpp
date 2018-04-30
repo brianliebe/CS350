@@ -54,6 +54,16 @@ void addCommandToQueue(Command *bc)
 	lck.unlock();
 }
 
+void addCommandToQueue(Command **bc, int number_of_commands)
+{
+	unique_lock<mutex> lck(command_mutex);
+	for (int i = 0; i < number_of_commands; i++)
+	{
+		commands.push_back(bc[i]);	
+	}
+	lck.unlock();
+}
+
 //Need to access the inode map so that we can see if the file name exists in the file map
 //However, we cannot access it because it's not being declared in the scope of the create_file function
 //Need to find a way to make the create_file have access to the inode map so I created the check_existence which takes 
@@ -99,13 +109,16 @@ void create_file(string filename)
 			perror("File name already exists!");
 		}
 		else{
-	
+			/*
 			ofstream new_file;
 			new_file.open(filename);
 			new_file.close();
 			Inode *createInode = new Inode();
 			createInode->file_name = filename;
 			Command *bc = new Command();
+			*/
+			Inode *createInode = new Inode();
+			createInode->file_name = filename;
 		}
 	}
 	else{
@@ -113,13 +126,11 @@ void create_file(string filename)
 	}
 		
 	/* peudocode:
-	if (check_existence) -> continue
+	if (!check_existence) -> continue
 	else -> return an error
 
 	inode = new inode() etc. // fill with the correct info for the file
-	Command *bc = new Command;
-	<save inode as a char*> -> put in bc
-	addCommandToQueue(bc);
+	add inode to vector
 	*/
 }
 
@@ -138,7 +149,9 @@ void import_file(string ssfs_file, string unix_file){
 	}
 	unixFile.close();
 	ssfsFile.close();	*/
-
+	/*
+	create a bunch of Commands that hold all the data from unix_file and then add those commands to the queue
+	*/
 	
 }
 //Outputing the file to the stdout 
