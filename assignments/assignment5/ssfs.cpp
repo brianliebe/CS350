@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cstring>
 #include <sstream>
+#include <algorithm>
 
 #include "ssfs_file.h"
 
@@ -20,7 +21,7 @@ vector<Inode*> inodes;
 Inode_Map *inode_map;
 int *free_block_list;
 
-mutex command_mutex, data_mutex, freeblock_mutex, map_mutex; // make sure we have locks surrounding all thread-accessible data
+mutex command_mutex, data_mutex, freeblock_mutex, map_mutex, inode_mutex; // make sure we have locks surrounding all thread-accessible data
 condition_variable cond;
 int threads_finished = 0;
 int total_threads = 0;
@@ -66,19 +67,6 @@ void addCommandToQueue(Command **bc, int number_of_commands)
 	lck.unlock();
 }
 
-//Need to access the inode map so that we can see if the file name exists in the file map
-//However, we cannot access it because it's not being declared in the scope of the create_file function
-//Need to find a way to make the create_file have access to the inode map so I created the check_existence which takes 
-//in the inode map and can just pass on the filename
-//func read_thread_ops doesn't have the inode map so it cannot be passed onto the check_existence if we replace create_file with 
-//check_existence(b) [line 168]
-
-/*
-You're right, so I made the Inode_Map a global variable (inode_map). I already created the struct for it, so I re-wrote your code
-so that it used the existing struct (just for simplicity), but your code was fine. I think we should just return a true/false
-rather than calling one function that will just call another. Call check_existence from create_file and return an error depending on
-the boolean.
-*/
 bool check_existence(string name)
  {
 	unique_lock<mutex> lck(map_mutex);
@@ -92,51 +80,30 @@ bool check_existence(string name)
 	}
 	lck.unlock();
 	return false;
-	/*
-	vector<int>::iterator itr;
-	if (find(inode_map->file_names.begin(), inode_map->file_names.end(), filename) != inode_map-file_names.end())
-		perror("File name already exists!");
-	}
-	else{
-		inode_map->file_names.push_back(name);
-		create_file(name);
-	} 
-	*/
 }
+
 void create_file(string filename)
 {
-	//UNFINISHED
-	if(inode_map->file_names.size() < 256){
-		if(check_existence(filename) == true){
+	if(inode_map->file_names.size() < 256)
+	{
+		if(check_existence(filename) == true)
+		{
 			perror("File name already exists!");
 		}
+
 		else{
-			/*std::string file_name;
-			int file_size;
-			int direct_block_pointers[12];
-			int indirect_block_pointer;
-			int double_indirect_block_pointer; */
-			Inode *createInode = new Inode();
-			createInode->file_name = filename;
-			createInode->file_size = 0;
-			createInode->direct_block_pointers = 0;
-			createInode->indirect_block_pointer = -1;
-			createInode->double_indirect_block_pointer = -1;
-			inode_map.push_back(createInode);
-			
+		
+			Inode *createInode = new Inode(filename, 0, block_size);
+			inodes.push_back(createInode);
+			inode_map->file_names.push_back(filename);
+			inode_map->inode_locations.push_back(getFreeBlockNumber());
 		}
+		
 	}
 	else{
 		perror("Not enough space");
 	}
 		
-	/* peudocode:
-	if (!check_existence) -> continue
-	else -> return an error
-
-	inode = new inode() etc. // fill with the correct info for the file
-	add inode to vector
-	*/
 }
 
  
@@ -162,6 +129,7 @@ void import_file(string ssfs_file, string unix_file){
 //Outputing the file to the stdout 
 void cat_file(string filename)
 {
+	/*
 	for(int i = 0; i < inodes.size(); i++){
 		if(inodes[i]->file_name == filename){
 			
@@ -179,11 +147,50 @@ void cat_file(string filename)
 		
 		
 		
-		
+*/		
 
 }
 void delete_file(string filename)
 {
+	//remove the inode
+	//free block
+	//search the inode map for the file
+	for(int i = 0; i < inode_map->file_names.size(); i++){
+		if(inode_map->file_names[i] == filename){
+			unique_lock<mutex> lck(map_mutex);
+			// freeBlock(inode_map->inode_locations[i]);
+			inode_map->file_names.erase(inode_map->file_names.begin() + i);
+			inode_map->inode_locations.erase(inode_map->inode_locations.begin() + i);
+			lck.unlock();		
+		}
+	}
+	for(int j = 0; j < inodes.size(); j++){
+		if(inodes[j]->file_name == filename){
+			Inode *inode = inodes[j];
+			unique_lock<mutex> lck(inode_mutex);
+			inodes.erase(inodes.begin() + j);
+			lck.unlock();
+			
+			for (int i = 0; i < 12; i++) 
+			{
+				if (inode->direct_block_pointers[i] != -1) 
+				{
+					freeBlock(inode->direct_block_pointers[i]);
+				}
+			}
+
+			for (int i = 0; i < block_size / 4 && inode->indirect_block != -1; i++) 
+			{
+				if (inode->indirect_block_pointers[i] != -1) 
+				{
+					freeBlock(inode->indirect_block_pointers[i]);
+				}
+			}
+		}
+	}
+			
+		
+	
 	
 }
 void write_to_file(string filename, char letter, int start_byte, int num_bytes)
@@ -198,9 +205,10 @@ void read_from_file(string filename, int start_byte, int num_bytes)
 //and individual inodes. I think we can just put the inodes that are created into an array
 // and add/delete to it accordingly.
 void list_files()
-{	/*
-	for(int i = 0; i < inode_map->file_names.size(); i++){
-		cout << "File name: " << file_names[i] << "," << "Size: " << */
+{	
+	for(int i = 0; i < inodes.size(); i++){
+		cout << "File name: " << inodes[i]->file_name << "," << "Size: " << inodes[i]->file_size << endl;
+	}
 }
 void shutdown_ssfs()
 {
@@ -269,8 +277,13 @@ void shutdown_ssfs()
 			disk.write((char*)&inodes[i]->file_name, sizeof(inodes[i]->file_name));
 			disk.write((char*)&inodes[i]->file_size, sizeof(inodes[i]->file_size));
 			for (int j = 0; j < 12; j++) disk.write((char*)&inodes[i]->direct_block_pointers[j], sizeof(int));
-			disk.write((char*)&inodes[i]->indirect_block_pointer, sizeof(int));
-			disk.write((char*)&inodes[i]->double_indirect_block_pointer, sizeof(int));
+			disk.write((char*)&inodes[i]->indirect_block, sizeof(int));
+			// disk.write((char*)&inodes[i]->double_indirect_block_pointer, sizeof(int));
+			disk.seekp(inodes[i]->indirect_block * block_size);
+			for (int j = 0; j < block_size / 4; j++)
+			{
+				disk.write((char*)&inodes[i]->indirect_block_pointers[j], sizeof(int));
+			}
 		}
 	}
 
