@@ -8,6 +8,7 @@
 #include <fstream>
 #include <cstring>
 #include <sstream>
+#include <algorithm>
 
 #include "ssfs_file.h"
 
@@ -20,7 +21,7 @@ vector<Inode*> inodes;
 Inode_Map *inode_map;
 int *free_block_list;
 
-mutex command_mutex, data_mutex, freeblock_mutex, map_mutex; // make sure we have locks surrounding all thread-accessible data
+mutex command_mutex, data_mutex, freeblock_mutex, map_mutex, inode_mutex; // make sure we have locks surrounding all thread-accessible data
 condition_variable cond;
 int threads_finished = 0;
 int total_threads = 0;
@@ -96,24 +97,20 @@ void create_file(string filename)
 		{
 			perror("File name already exists!");
 		}
-		else
-		{
-			Inode *createInode = new Inode("this", 3);
-			createInode->file_name = filename;
+
+		else{
+		
+			Inode *createInode = new Inode(filename, 0, block_size);
 			inodes.push_back(createInode);
+			inode_map->file_names.push_back(filename);
+			inode_map->inode_locations.push_back(getFreeBlockNumber());
 		}
+		
 	}
 	else{
 		perror("Not enough space");
 	}
 		
-	/* peudocode:
-	if (!check_existence) -> continue
-	else -> return an error
-
-	inode = new inode() etc. // fill with the correct info for the file
-	add inode to vector
-	*/
 }
 
  
@@ -139,19 +136,68 @@ void import_file(string ssfs_file, string unix_file){
 //Outputing the file to the stdout 
 void cat_file(string filename)
 {
-	char buf[256];
-	ifstream fileOpen(filename);
-	if(!fileOpen.is_open()){
-		cout << "Can't open";
+	/*
+	for(int i = 0; i < inodes.size(); i++){
+		if(inodes[i]->file_name == filename){
+			
+	
+			
+			for(int i = 0; i < (sizeof(inodes[i]->direct_block_pointers)/sizeof(inodes[i]->direct_block_pointers[0])); i++){
+				char *buf = new char[block_size];
+				disk.seekg(inodes[i]->direct_block_pointers[i] * block_size);
+				disk.read(buf, block_size);
+				disk.close();
+				cout << buf << endl;
+			}
+		}
 	}
-	while(fileOpen >> buf){
-		cout << buf << endl;
-	}
-	fileOpen.close();
+		
+		
+		
+*/		
 
 }
 void delete_file(string filename)
 {
+	//remove the inode
+	//free block
+	//search the inode map for the file
+	for(int i = 0; i < inode_map->file_names.size(); i++){
+		if(inode_map->file_names[i] == filename){
+			unique_lock<mutex> lck(map_mutex);
+			// freeBlock(inode_map->inode_locations[i]);
+			inode_map->file_names.erase(inode_map->file_names.begin() + i);
+			inode_map->inode_locations.erase(inode_map->inode_locations.begin() + i);
+			lck.unlock();		
+		}
+	}
+	for(int j = 0; j < inodes.size(); j++){
+		if(inodes[j]->file_name == filename){
+			Inode *inode = inodes[j];
+			unique_lock<mutex> lck(inode_mutex);
+			inodes.erase(inodes.begin() + j);
+			lck.unlock();
+			
+			for (int i = 0; i < 12; i++) 
+			{
+				if (inode->direct_block_pointers[i] != -1) 
+				{
+					freeBlock(inode->direct_block_pointers[i]);
+				}
+			}
+
+			for (int i = 0; i < block_size / 4 && inode->indirect_block != -1; i++) 
+			{
+				if (inode->indirect_block_pointers[i] != -1) 
+				{
+					freeBlock(inode->indirect_block_pointers[i]);
+				}
+			}
+		}
+	}
+			
+		
+	
 	
 }
 void write_to_file(string filename, char letter, int start_byte, int num_bytes)
@@ -166,9 +212,10 @@ void read_from_file(string filename, int start_byte, int num_bytes)
 //and individual inodes. I think we can just put the inodes that are created into an array
 // and add/delete to it accordingly.
 void list_files()
-{	/*
-	for(int i = 0; i < inode_map->file_names.size(); i++){
-		cout << "File name: " << file_names[i] << "," << "Size: " << */
+{	
+	for(int i = 0; i < inodes.size(); i++){
+		cout << "File name: " << inodes[i]->file_name << "," << "Size: " << inodes[i]->file_size << endl;
+	}
 }
 void shutdown_ssfs()
 {
@@ -237,8 +284,13 @@ void shutdown_ssfs()
 			disk.write((char*)&inodes[i]->file_name, sizeof(inodes[i]->file_name));
 			disk.write((char*)&inodes[i]->file_size, sizeof(inodes[i]->file_size));
 			for (int j = 0; j < 12; j++) disk.write((char*)&inodes[i]->direct_block_pointers[j], sizeof(int));
-			disk.write((char*)&inodes[i]->indirect_block_pointer, sizeof(int));
-			disk.write((char*)&inodes[i]->double_indirect_block_pointer, sizeof(int));
+			disk.write((char*)&inodes[i]->indirect_block, sizeof(int));
+			// disk.write((char*)&inodes[i]->double_indirect_block_pointer, sizeof(int));
+			disk.seekp(inodes[i]->indirect_block * block_size);
+			for (int j = 0; j < block_size / 4; j++)
+			{
+				disk.write((char*)&inodes[i]->indirect_block_pointers[j], sizeof(int));
+			}
 		}
 	}
 
