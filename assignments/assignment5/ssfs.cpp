@@ -49,6 +49,13 @@ int getFreeBlockNumber()
 	return -1;
 }
 
+void freeBlock(int id)
+{
+	unique_lock<mutex> lck(freeblock_mutex);
+	free_block_list[id] = 1;
+	lck.unlock();
+}
+
 void addCommandToQueue(Command *bc) 
 {
 	unique_lock<mutex> lck(command_mutex);
