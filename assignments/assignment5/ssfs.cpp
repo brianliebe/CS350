@@ -111,17 +111,19 @@ void create_file(string filename)
 			perror("File name already exists!");
 		}
 		else{
-			/*
-			ofstream new_file;
-			new_file.open(filename);
-			new_file.close();
+			/*std::string file_name;
+			int file_size;
+			int direct_block_pointers[12];
+			int indirect_block_pointer;
+			int double_indirect_block_pointer; */
 			Inode *createInode = new Inode();
 			createInode->file_name = filename;
-			Command *bc = new Command();
-			*/
-			Inode *createInode = new Inode();
-			createInode->file_name = filename;
-			inodes.push_back(createInode);
+			createInode->file_size = 0;
+			createInode->direct_block_pointers = 0;
+			createInode->indirect_block_pointer = -1;
+			createInode->double_indirect_block_pointer = -1;
+			inode_map.push_back(createInode);
+			
 		}
 	}
 	else{
@@ -160,15 +162,24 @@ void import_file(string ssfs_file, string unix_file){
 //Outputing the file to the stdout 
 void cat_file(string filename)
 {
-	char buf[256];
-	ifstream fileOpen(filename);
-	if(!fileOpen.is_open()){
-		cout << "Can't open";
+	for(int i = 0; i < inodes.size(); i++){
+		if(inodes[i]->file_name == filename){
+			
+	
+			
+			for(int i = 0; i < (sizeof(inodes[i]->direct_block_pointers)/sizeof(inodes[i]->direct_block_pointers[0])); i++){
+				char *buf = new char[block_size];
+				disk.seekg(inodes[i]->direct_block_pointers[i] * block_size);
+				disk.read(buf, block_size);
+				disk.close();
+				cout << buf << endl;
+			}
+		}
 	}
-	while(fileOpen >> buf){
-		cout << buf << endl;
-	}
-	fileOpen.close();
+		
+		
+		
+		
 
 }
 void delete_file(string filename)
