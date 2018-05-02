@@ -66,19 +66,6 @@ void addCommandToQueue(Command **bc, int number_of_commands)
 	lck.unlock();
 }
 
-//Need to access the inode map so that we can see if the file name exists in the file map
-//However, we cannot access it because it's not being declared in the scope of the create_file function
-//Need to find a way to make the create_file have access to the inode map so I created the check_existence which takes 
-//in the inode map and can just pass on the filename
-//func read_thread_ops doesn't have the inode map so it cannot be passed onto the check_existence if we replace create_file with 
-//check_existence(b) [line 168]
-
-/*
-You're right, so I made the Inode_Map a global variable (inode_map). I already created the struct for it, so I re-wrote your code
-so that it used the existing struct (just for simplicity), but your code was fine. I think we should just return a true/false
-rather than calling one function that will just call another. Call check_existence from create_file and return an error depending on
-the boolean.
-*/
 bool check_existence(string name)
  {
 	unique_lock<mutex> lck(map_mutex);
@@ -92,34 +79,19 @@ bool check_existence(string name)
 	}
 	lck.unlock();
 	return false;
-	/*
-	vector<int>::iterator itr;
-	if (find(inode_map->file_names.begin(), inode_map->file_names.end(), filename) != inode_map-file_names.end())
-		perror("File name already exists!");
-	}
-	else{
-		inode_map->file_names.push_back(name);
-		create_file(name);
-	} 
-	*/
 }
+
 void create_file(string filename)
 {
-	//UNFINISHED
-	if(inode_map->file_names.size() < 256){
-		if(check_existence(filename) == true){
+	if(inode_map->file_names.size() < 256)
+	{
+		if(check_existence(filename) == true)
+		{
 			perror("File name already exists!");
 		}
-		else{
-			/*
-			ofstream new_file;
-			new_file.open(filename);
-			new_file.close();
-			Inode *createInode = new Inode();
-			createInode->file_name = filename;
-			Command *bc = new Command();
-			*/
-			Inode *createInode = new Inode();
+		else
+		{
+			Inode *createInode = new Inode("this", 3);
 			createInode->file_name = filename;
 			inodes.push_back(createInode);
 		}

@@ -9,7 +9,13 @@ typedef struct Inode {
 	int file_size;
 	int direct_block_pointers[12];
 	int indirect_block_pointer;
-	int double_indirect_block_pointer;	
+	int double_indirect_block_pointer;
+	Inode(std::string filename, int size) 
+	{
+		file_name = filename;
+		file_size = size;
+		for (int i = 0; i < 12; i++) direct_block_pointers[i] = 0;
+	}	
 } Inode;
 
 typedef struct Inode_Map {
