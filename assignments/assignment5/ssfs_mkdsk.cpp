@@ -67,7 +67,7 @@ int main (int argc, char **argv)
 	int free_list_blocks = ((num_blocks) * 4) / block_size;
 	if ((num_blocks * 4) % block_size > 0) free_list_blocks++;
 
-	for (int i = free_list_blocks + inode_map_blocks + 1; i < num_blocks; i++) 
+	for (int i = 0; i < num_blocks; i++) 
 	{
 		// Write a 1 (free) for all blocks except the ones that have been allocated already
 		int temp_int = 1;

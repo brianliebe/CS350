@@ -16,6 +16,7 @@ using namespace std;
 /* GLOBAL VARIABLES */
 
 vector<Command*> commands;
+vector<Inode*> inodes;
 Inode_Map *inode_map;
 int *free_block_list;
 
@@ -27,6 +28,7 @@ int total_threads = 0;
 int num_blocks = 0;
 int block_size = 0;
 bool force_close = false;
+string disk_name = "DISK";
 
 /*
 	Returns an int location for the first free block in the free_block_list
@@ -119,6 +121,7 @@ void create_file(string filename)
 			*/
 			Inode *createInode = new Inode();
 			createInode->file_name = filename;
+			inodes.push_back(createInode);
 		}
 	}
 	else{
@@ -191,9 +194,76 @@ void list_files()
 void shutdown_ssfs()
 {
 	force_close = true; // make sure this is set
+	this_thread::sleep_for(chrono::seconds(2));
 	// need to copy the inode map back in
 	// need to copy the inodes back in
 	// data should already be set properly
+	fstream disk(disk_name.c_str(), ios::binary | ios::out | ios::in);
+	// disk.seekp(command->block_id * block_size, ios::beg);
+	// disk.write(command->data, block_size);
+
+	// write inode map to file
+	int start_location = 1 * block_size;
+	disk.seekp(start_location);
+	int max_entries = 256;
+	int inode_map_blocks = (max_entries * 36) / block_size;
+	if ((max_entries * 36) % block_size > 0) inode_map_blocks++;
+
+	for (int i = 0; i < inode_map->file_names.size(); i++) 
+	{
+		char temp_file[32];
+		strcpy(temp_file, inode_map->file_names[i].c_str());
+		disk.write((char*)temp_file, sizeof(temp_file));
+	}
+	for (int i = inode_map->file_names.size(); i < max_entries; i++)
+	{
+		char temp_file[32];
+		strcpy(temp_file, "NULL_FILE");
+		disk.write((char*)&temp_file, sizeof(temp_file));
+	}
+	for (int i = 0; i < inode_map->inode_locations.size(); i++)
+	{
+		disk.write((char*)&inode_map->inode_locations[i], sizeof(inode_map->inode_locations[i]));
+	}
+	for (int i = inode_map->inode_locations.size(); i < max_entries; i++)
+	{
+		int temp_int = -1;
+		disk.write((char*)&temp_int, sizeof(temp_int));
+	}
+
+	// write free block list to file
+	start_location = (1 + inode_map_blocks) * block_size;
+	disk.seekp(start_location);
+	
+	for (int i = 0; i < num_blocks; i++) 
+	{
+		disk.write((char*)&free_block_list[i], sizeof(int));
+	}
+
+	// write inodes to file 
+	for (int i = 0; i < inodes.size(); i++)
+	{
+		int block_number = 0;
+		for (int j = 0; j < inode_map->file_names.size(); j++)
+		{
+			if (inode_map->file_names[j] == inodes[i]->file_name)
+			{
+				block_number = inode_map->inode_locations[j];
+				break;
+			}
+		}
+		if (block_number != 0)
+		{
+			disk.seekp(block_number * block_size);
+			disk.write((char*)&inodes[i]->file_name, sizeof(inodes[i]->file_name));
+			disk.write((char*)&inodes[i]->file_size, sizeof(inodes[i]->file_size));
+			for (int j = 0; j < 12; j++) disk.write((char*)&inodes[i]->direct_block_pointers[j], sizeof(int));
+			disk.write((char*)&inodes[i]->indirect_block_pointer, sizeof(int));
+			disk.write((char*)&inodes[i]->double_indirect_block_pointer, sizeof(int));
+		}
+	}
+
+	disk.close();
 }
 
 void execute_commands(string disk_name) 
@@ -324,7 +394,7 @@ void read_thread_ops(string filename)
 
 int main(int argc, char **argv) 
 {
-	string op1, op2, op3, op4, disk_name;
+	string op1, op2, op3, op4;
 	switch(argc) 
 	{
 		case 1:
