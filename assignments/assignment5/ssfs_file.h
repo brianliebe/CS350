@@ -39,7 +39,26 @@ typedef struct Command
 	std::string command; // "READ" or "WRITE"
 	int job_id;
 	int block_id;
+	int thread_id;
 	char *data;
+	Command(std::string comm, int job, int id, char *d) 
+	{
+		command = comm;
+		job_id = job;
+		block_id = id;
+		data = d;
+	}
 } Command;
+
+typedef struct Thread_Arg
+{
+	std::string filename;
+	int thread_id;
+	Thread_Arg(std::string f, int t)
+	{
+		filename = f;
+		thread_id = t;
+	}
+} Thread_Arg;
 
 #endif

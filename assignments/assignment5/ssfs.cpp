@@ -21,15 +21,18 @@ vector<Inode*> inodes;
 Inode_Map *inode_map;
 int *free_block_list;
 
-mutex command_mutex, data_mutex, freeblock_mutex, map_mutex, inode_mutex; // make sure we have locks surrounding all thread-accessible data
+mutex command_mutex, data_mutex, freeblock_mutex, map_mutex, inode_mutex, job_mutex; // make sure we have locks surrounding all thread-accessible data
 condition_variable cond;
 int threads_finished = 0;
 int total_threads = 0;
+int job_id_count;
 
 int num_blocks = 0;
 int block_size = 0;
 bool force_close = false;
 string disk_name = "DISK";
+
+vector<char*> *responses;
 
 /*
 	Returns an int location for the first free block in the free_block_list
@@ -50,6 +53,14 @@ int getFreeBlockNumber()
 	return -1;
 }
 
+int getJobId()
+{
+	unique_lock<mutex> lck(job_mutex);
+	int temp = job_id_count++;
+	lck.unlock();
+	return temp;
+}
+
 void freeBlock(int id)
 {
 	unique_lock<mutex> lck(freeblock_mutex);
@@ -64,10 +75,10 @@ void addCommandToQueue(Command *bc)
 	lck.unlock();
 }
 
-void addCommandToQueue(Command **bc, int number_of_commands)
+void addCommandToQueue(vector<Command*> bc)
 {
 	unique_lock<mutex> lck(command_mutex);
-	for (int i = 0; i < number_of_commands; i++)
+	for (int i = 0; i < bc.size(); i++)
 	{
 		commands.push_back(bc[i]);	
 	}
@@ -200,23 +211,97 @@ void delete_file(string filename)
 	
 	
 }
-void write_to_file(string filename, char letter, int start_byte, int num_bytes)
+void write_to_file(string filename, char letter, int start_byte, int num_bytes, int thread_id)
 {
 
 }
-void read_from_file(string filename, int start_byte, int num_bytes)
-{
 
+void read_from_file(string filename, int start_byte, int num_bytes, int thread_id)
+{
+	int block_id = 0;
+	Inode *inode;
+	vector<Command*> commands;
+	vector<int> job_ids;
+	for (int i = 0; i < inode_map->file_names.size(); i++)
+	{
+		if (inode_map->file_names[i] == filename)
+		{
+			block_id = inode_map->inode_locations[i];
+			break;
+		}
+	}
+	if (block_id != 0)
+	{
+		for (int i = 0; i < inodes.size(); i++) 
+		{
+			if (inodes[i]->file_name == filename) 
+			{
+				inode = inodes[i];
+				break;
+			}
+		}
+		if (start_byte + num_bytes > inode->file_size) return; // error
+		int start_block = (start_byte / block_size);
+		int end_block = (start_byte + num_bytes) / block_size;
+		if (end_block <= 12) 
+		{
+			for (int i = start_block; i < end_block; i++)
+			{
+				int id = getJobId();
+				job_ids.push_back(id);
+				Command *comm = new Command("READ", id, inode->direct_block_pointers[i], NULL);
+				comm->thread_id = thread_id;
+				commands.push_back(comm);
+			}
+		}
+		else 
+		{
+			// fuck off
+		}
+	}
+	addCommandToQueue(commands);
+	
+	while (responses[thread_id].size() != job_ids.size());
+
+	if (responses[thread_id].size() == 1)
+	{
+		int new_start_byte = start_byte % block_size;
+		printf("%.*s", num_bytes, responses[thread_id][0]);
+	}
+	else if (responses[thread_id].size() == 2)
+	{
+		int new_start_byte = start_byte % block_size;
+		int new_num_bytes = block_size - new_start_byte;
+		printf("%.*s", new_num_bytes, responses[thread_id][0]);
+		new_start_byte = 0;
+		new_num_bytes = num_bytes - new_num_bytes;
+		printf("%.*s", new_num_bytes, responses[thread_id][1]);
+	}
+	else 
+	{
+		int remaining = num_bytes;
+		int new_start_byte = start_byte % block_size;
+		int new_num_bytes = block_size - new_start_byte;
+		remaining -= new_num_bytes;
+		printf("%.*s", new_num_bytes, responses[thread_id][0]);
+		for (int i = 1; i < responses[thread_id].size(); i++)
+		{
+			printf("%.*s", block_size, responses[thread_id][i]);
+			remaining -= block_size;
+		}
+		new_start_byte = 0;
+		new_num_bytes = remaining;
+		printf("%.*s", new_num_bytes, responses[thread_id][1]);
+	}
 }
-//Unless there's something I'm missing, I don't think we have a direct link between the inode map
-//and individual inodes. I think we can just put the inodes that are created into an array
-// and add/delete to it accordingly.
+
 void list_files()
 {	
 	for(int i = 0; i < inodes.size(); i++){
 		cout << "File name: " << inodes[i]->file_name << "," << "Size: " << inodes[i]->file_size << endl;
 	}
 }
+
 void shutdown_ssfs()
 {
 	force_close = true; // make sure this is set
@@ -327,7 +412,7 @@ void execute_commands(string disk_name)
 			disk.read(buffer, block_size);
 			disk.close();
 			
-			cout << buffer << endl;
+			responses[command->thread_id].push_back(buffer);
 
 			cout << "STOP: READ for job " << command->job_id << endl;
 		}
@@ -352,8 +437,10 @@ void execute_commands(string disk_name)
 	will just add the Commands to a queue, and the other thread performs them. So each "command" function
 	should "figure out" what blocks need to be written to based on what it's being asked to do.
 */
-void read_thread_ops(string filename)
+void read_thread_ops(Thread_Arg *arg)
 {
+	string filename = arg->filename;
+	int thread_id = arg->thread_id;
 	ifstream op_file(filename.c_str());
 	string line;
 	while (getline(op_file, line) && !force_close) 
@@ -394,7 +481,7 @@ void read_thread_ops(string filename)
 			char c;
 			int d, e;
 			if (!(iss >> a >> b >> c >> d >> e)) { break; }
-			write_to_file(b, c, d, e);
+			write_to_file(b, c, d, e, thread_id);
 		}
 		else if (command == "READ") 
 		{
@@ -402,7 +489,7 @@ void read_thread_ops(string filename)
 			string a, b;
 			int c, d;
 			if (!(iss >> a >> b >> c >> d)) { break; }
-			read_from_file(b, c, d);
+			read_from_file(b, c, d, thread_id);
 		}
 		else if (command == "LIST")
 		{
@@ -523,7 +610,7 @@ int main(int argc, char **argv)
 	threads.push_back(thread(execute_commands, disk_name));
 	for (int i = 0; i < total_threads; i++)
 	{
-		threads.push_back(thread(read_thread_ops, ops_files[i]));
+		threads.push_back(thread(read_thread_ops, new Thread_Arg(ops_files[i], i)));
 	}
 	for (int i = 0; i < total_threads + 1; i++)
 	{
