@@ -34,6 +34,8 @@ string disk_name = "DISK";
 
 vector<char*> *responses;
 
+void read_from_file(string, int, int, int);
+
 /*
 	Returns an int location for the first free block in the free_block_list
 */
@@ -106,7 +108,7 @@ void create_file(string filename)
 	{
 		if(check_existence(filename) == true)
 		{
-			perror("File name already exists!");
+			printf("File name already exists: %s\n", filename.c_str());
 		}
 
 		else{
@@ -119,7 +121,7 @@ void create_file(string filename)
 		
 	}
 	else{
-		perror("Not enough space");
+		printf("Not enough space, ignoring.\n");
 	}
 		
 }
@@ -145,28 +147,18 @@ void import_file(string ssfs_file, string unix_file){
 	
 }
 //Outputing the file to the stdout 
-void cat_file(string filename)
-{
-	/*
-	for(int i = 0; i < inodes.size(); i++){
-		if(inodes[i]->file_name == filename){
-			
-	
-			
-			for(int i = 0; i < (sizeof(inodes[i]->direct_block_pointers)/sizeof(inodes[i]->direct_block_pointers[0])); i++){
-				char *buf = new char[block_size];
-				disk.seekg(inodes[i]->direct_block_pointers[i] * block_size);
-				disk.read(buf, block_size);
-				disk.close();
-				cout << buf << endl;
-			}
+void cat_file(string filename, int thread_id)
+{	
+	int temp_size = 0;
+	for (int i = 0; i < inodes.size(); i++) 
+	{
+		if (inodes[i]->file_name == filename) 
+		{
+			temp_size = inodes[i]->file_size;
+			break;
 		}
 	}
-		
-		
-		
-*/		
-
+	read_from_file(filename, 0, temp_size, thread_id);
 }
 void delete_file(string filename)
 {
@@ -243,20 +235,51 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 		if (start_byte + num_bytes > inode->file_size) return; // error
 		int start_block = (start_byte / block_size);
 		int end_block = (start_byte + num_bytes) / block_size;
-		if (end_block <= 12) 
+		if (end_block < 12) 
 		{
 			for (int i = start_block; i < end_block; i++)
 			{
 				int id = getJobId();
 				job_ids.push_back(id);
-				Command *comm = new Command("READ", id, inode->direct_block_pointers[i], NULL);
-				comm->thread_id = thread_id;
+				Command *comm = new Command("READ", id, inode->direct_block_pointers[i], NULL, thread_id);
 				commands.push_back(comm);
 			}
 		}
 		else 
 		{
-			// fuck off
+			if (start_block < 12)
+			{
+				for (int i = start_block; i < 12; i++)
+				{
+					int id = getJobId();
+					job_ids.push_back(id);
+					Command *comm = new Command("READ", id, inode->direct_block_pointers[i], NULL, thread_id);
+					commands.push_back(comm);
+				}
+				for (int i = 0; i < end_block - 12; i++)
+				{
+					if (inode->indirect_block_pointers[i] != -1)
+					{
+						int id = getJobId();
+						job_ids.push_back(id);
+						Command *comm = new Command("READ", id, inode->indirect_block_pointers[i], NULL, thread_id);
+						commands.push_back(comm);
+					}
+				}
+			}
+			else
+			{
+				for (int i = start_block - 12; i < end_block - 12; i++)
+				{
+					if (inode->indirect_block_pointers[i] != -1)
+					{
+						int id = getJobId();
+						job_ids.push_back(id);
+						Command *comm = new Command("READ", id, inode->indirect_block_pointers[i], NULL, thread_id);
+						commands.push_back(comm);
+					}
+				}
+			}
 		}
 	}
 	addCommandToQueue(commands);
@@ -297,21 +320,19 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 
 void list_files()
 {	
-	for(int i = 0; i < inodes.size(); i++){
-		cout << "File name: " << inodes[i]->file_name << "," << "Size: " << inodes[i]->file_size << endl;
+	for(int i = 0; i < inodes.size(); i++)
+	{
+		printf("File name: %s, Size: %d\n", inodes[i]->file_name.c_str(), inodes[i]->file_size);
 	}
+	if (inodes.size() == 0) printf("No files.\n");
 }
 
 void shutdown_ssfs()
 {
-	force_close = true; // make sure this is set
+	force_close = true;
+
 	this_thread::sleep_for(chrono::seconds(2));
-	// need to copy the inode map back in
-	// need to copy the inodes back in
-	// data should already be set properly
 	fstream disk(disk_name.c_str(), ios::binary | ios::out | ios::in);
-	// disk.seekp(command->block_id * block_size, ios::beg);
-	// disk.write(command->data, block_size);
 
 	// write inode map to file
 	int start_location = 1 * block_size;
@@ -365,8 +386,11 @@ void shutdown_ssfs()
 		}
 		if (block_number != 0)
 		{
+			char name[32];
+			strcpy(name, inodes[i]->file_name.c_str());
 			disk.seekp(block_number * block_size);
-			disk.write((char*)&inodes[i]->file_name, sizeof(inodes[i]->file_name));
+
+			disk.write(name, 32);
 			disk.write((char*)&inodes[i]->file_size, sizeof(inodes[i]->file_size));
 			for (int j = 0; j < 12; j++) disk.write((char*)&inodes[i]->direct_block_pointers[j], sizeof(int));
 			disk.write((char*)&inodes[i]->indirect_block, sizeof(int));
@@ -465,7 +489,7 @@ void read_thread_ops(Thread_Arg *arg)
 			istringstream iss(line);
 			string a, b;
 			if (!(iss >> a >> b)) { break; }
-			cat_file(b);
+			cat_file(b, thread_id);
 		}
 		else if (command == "DELETE")
 		{
@@ -587,6 +611,38 @@ int main(int argc, char **argv)
 		}
 	}
 	cout << "Map size: " << inode_map->file_names.size()  << " and we skipped: " << other << endl;
+
+	// read the inodes
+	for (unsigned int i = 0; i < inode_map->file_names.size(); i++)
+	{
+		int location = inode_map->inode_locations[i];
+		string name = inode_map->file_names[i];
+
+		Inode *inode = new Inode();
+		inode->file_name = name;
+
+		disk.seekg(location * block_size);
+		char *t_file = new char[32];
+		int t_size, t_indirect;
+		int *directs = new int[12];
+		
+		disk.read(t_file, 32);
+		
+		disk.read(reinterpret_cast<char*>(&t_size), sizeof(int));
+
+		for (int j = 0; j < 12; j++)
+		{
+			int temp;
+			disk.read(reinterpret_cast<char*>(&temp), sizeof(int));
+			directs[j] = temp;
+		}
+		disk.read(reinterpret_cast<char*>(&t_indirect), sizeof(int));
+		inode->file_size = t_size;
+		inode->indirect_block = t_indirect;
+
+		inode->direct_block_pointers = directs;
+		inodes.push_back(inode);
+	}
 
 	// Read in the free block list
 	int start_location = (1 + inode_map_blocks) * block_size;
