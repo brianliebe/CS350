@@ -21,6 +21,10 @@ typedef struct Inode {
 		for (int i = 0; i < 12; i++) direct_block_pointers[i] = -1;
 		for (int i = 0; i < block_size/4; i++) indirect_block_pointers[i] = -1;
 	}
+	Inode()
+	{
+		// fuck off!
+	}
 		
 } Inode;
 
@@ -41,12 +45,13 @@ typedef struct Command
 	int block_id;
 	int thread_id;
 	char *data;
-	Command(std::string comm, int job, int id, char *d) 
+	Command(std::string comm, int job, int id, char *d, int t_id) 
 	{
 		command = comm;
 		job_id = job;
 		block_id = id;
 		data = d;
+		thread_id = t_id;
 	}
 } Command;
 
