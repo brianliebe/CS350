@@ -53,6 +53,12 @@ typedef struct Command
 		data = d;
 		thread_id = t_id;
 	}
+	Command(std::string comm, int id, char *d)
+	{
+		command = comm;
+		block_id = id;
+		data = d;
+	}
 } Command;
 
 typedef struct Thread_Arg

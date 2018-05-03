@@ -1,7 +1,2 @@
-LIST
-CREATE file.txt
-CREATE file2.txt
-LIST
-DELETE file.txt
-LIST
+CAT file.txt
 SHUTDOWN
