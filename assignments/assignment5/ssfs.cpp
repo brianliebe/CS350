@@ -283,7 +283,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 				for(int l = 0; l < num_bytes; l++){
 					int id = getJobId();
 					job_ids.push_back(id);
-					Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter);
+					Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
 					comm->thread_id = thread_id;
 					commands.push_back(comm);	
 				}
@@ -301,7 +301,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 					{
 						int id = getJobId();
 						job_ids.push_back(id);
-						Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter);
+						Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
 						commands.push_back(comm);
 					}
 				}
@@ -314,7 +314,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 						{
 							int id = getJobId();
 							job_ids.push_back(id);
-							Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter);
+							Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
 							commands.push_back(comm);
 						}
 					}
@@ -331,7 +331,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 		
 							int id = getJobId();
 							job_ids.push_back(id);
-							Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter);
+							Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
 							commands.push_back(comm);
 						}
 					}
