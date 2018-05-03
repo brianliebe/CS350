@@ -127,8 +127,6 @@ void create_file(string filename)
 		
 }
 
- 
-
 void import_file(string ssfs_file, string unix_file)
 {
 	bool file_already_exists = false;
@@ -264,7 +262,141 @@ void delete_file(string filename)
 
 void write_to_file(string filename, char letter, int start_byte, int num_bytes, int thread_id)
 {
+	vector<int> job_ids;
+	int block_id = 0;
+	Inode *inode;
+	vector<Command *> commands;
+	for(int i = 0; i < inode_map->file_names.size(); i++)
+	{
+		if(inode_map->file_names[i] == filename)
+		{
+							
+			block_id = inode_map->inode_locations[i];
+			break;
+		}
+	}
+	if(block_id != 0)
+	{
+		for(int i = 0; i < inodes.size(); i++)
+		{
+			if(inodes[i]->file_name == filename)
+			{
+				inode = inodes[i];
+				break;
+			}
+		}
+		if(start_byte + num_bytes > inode->file_size)
+		{
+			//update the file size to the new file size
+			inode->file_size = inode->file_size + num_bytes;
+		}
+		
+		
+		//Direct block
+		
+		//Updating the direct block pointers && indirect block pointers
+		int num_of_blocks = block_size / num_bytes;
+		int num_of_blocks_left = num_of_blocks;
+		for(int i = 0; i < num_of_blocks; i++)
+		{		
+			int free_block_number = getFreeBlockNumber();
+			if(free_block_number != -1)
+			{
+				for(int j = 0; j < 12; j++)
+				{
+					//Check if direct block pointer list has space
+					if(inode->direct_block_pointers[j] == -1)
+					{
+						inode->direct_block_pointers[j] = free_block_number;
+						num_of_blocks_left--;
+					}
+					if(j == 12 && num_of_blocks_left > 0)
+					{
+						for(int k = 0; k < block_size / 4; k++)
+						{
+							if(inode->indirect_block_pointers[k] == -1)
+							{
+								inode->indirect_block_pointers[k] = free_block_number;
+							}
+						}	
 
+					}
+				}
+
+			}
+			else
+			{
+				perror("Not enough free blocks!");
+			}
+				
+		}
+		//////////////////////////
+		//
+		int start_block = (start_byte / block_size);
+		int end_block = (start_byte + num_bytes) / block_size;
+		if(end_block <= 12){
+			for(int i = start_block; i < end_block; i++)
+			{
+				for(int l = 0; l < num_bytes; l++){
+					int id = getJobId();
+					job_ids.push_back(id);
+					Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
+					comm->thread_id = thread_id;
+					commands.push_back(comm);	
+				}
+			}			
+		
+			
+		}
+		else 
+		{
+			if (start_block < 12)
+			{
+				for (int i = start_block; i < 12; i++)
+				{
+					for(int l = 0; l < num_bytes; l++)
+					{
+						int id = getJobId();
+						job_ids.push_back(id);
+						Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
+						commands.push_back(comm);
+					}
+				}
+				for (int i = 0; i < end_block - 12; i++)
+				{
+					
+					if (inode->indirect_block_pointers[i] != -1)
+					{
+						for(int l = 0; l < num_bytes; l++)
+						{
+							int id = getJobId();
+							job_ids.push_back(id);
+							Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
+							commands.push_back(comm);
+						}
+					}
+				}
+			}
+			else
+			{
+				for (int i = start_block - 12; i < end_block - 12; i++)
+				{
+					if (inode->indirect_block_pointers[i] != -1)
+					{
+						for(int l = 0; l < num_bytes; l++)
+						{
+		
+							int id = getJobId();
+							job_ids.push_back(id);
+							Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
+							commands.push_back(comm);
+						}
+					}
+				}
+			}
+
+		}			
+	}
 }
 
 void read_from_file(string filename, int start_byte, int num_bytes, int thread_id)
