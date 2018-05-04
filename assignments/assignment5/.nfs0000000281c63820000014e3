@@ -1,5 +1,0 @@
-CREATE file3.txt
-IMPORT file3.txt apple.txt
-CAT file3.txt
-CAT file2.txt
-LIST file3.txt
