@@ -1,7 +1,8 @@
+IMPORT small.txt small.txt
+CAT small.txt
 IMPORT medium.txt medium.txt
-CAT medium.txt
-READ medium.txt 50 38
-READ medium.txt 2 140
-WRITE medium.txt k 5 19
-READ medium.txt 0 50
+CAT small.txt
+IMPORT large.txt large.txt
+CAT small.txt
+LIST
 SHUTDOWN

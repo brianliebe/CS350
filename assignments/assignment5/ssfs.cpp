@@ -143,7 +143,6 @@ void import_file(string ssfs_file, string unix_file)
 		if (inodes[i]->file_name == ssfs_file) 
 		{ 
 			file_already_exists = true; 
-			index = i;
 			break;
 		}
 	}
@@ -156,13 +155,13 @@ void import_file(string ssfs_file, string unix_file)
 	{
 		delete_file(ssfs_file);
 		create_file(ssfs_file);
-		for (unsigned int i = 0; i < inodes.size(); i++)
+	}
+	for (unsigned int i = 0; i < inodes.size(); i++)
+	{
+		if (inodes[i]->file_name == ssfs_file)
 		{
-			if (inodes[i]->file_name == ssfs_file)
-			{
-				index = i;
-				break;
-			}
+			index = i;
+			break;
 		}
 	}
 
@@ -178,14 +177,24 @@ void import_file(string ssfs_file, string unix_file)
 		if (unix_size <= block_size)
 		{
 			unix.read(data, unix_size);
+			data[unix_size] = '\0';
 			unix_size = 0;
 		}
 		else
 		{
 			unix_size -= block_size;
 			unix.read(data, block_size);
+			data[block_size] = '\0';
 		}
+
 		int block = getFreeBlockNumber();
+		if (block == -1) 
+		{
+			printf("ERROR: No free blocks\n");
+			unix.close();
+			return;
+		}
+
 		Command *comm = new Command("WRITE", block, data);
 
 		bool found_in_direct = false;
@@ -413,7 +422,8 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 		vector<Command*> write_commands;
 		
 		// while (responses[thread_id].size() != commands.size());
-		while (checkSize(thread_id) != commands.size());
+		while (checkSize(thread_id) != commands.size() && !force_close);
+		if (force_close) return;
 
 		int number_of_blocks = commands.size();
 
@@ -591,7 +601,8 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 	}
 	addCommandToQueue(commands);
 
-	while (responses[thread_id].size() != job_ids.size());
+	while (checkSize(thread_id) != job_ids.size() && !force_close);
+	if (force_close) return;
 
 	printf("OUTPUT:\n");
 	if (responses[thread_id].size() == 1)
@@ -795,6 +806,7 @@ void read_thread_ops(Thread_Arg *arg)
 	int thread_id = arg->thread_id;
 	ifstream op_file(filename.c_str());
 	string line;
+
 	while (getline(op_file, line) && !force_close) 
 	{
 		string command = line.substr(0, line.find(" "));
