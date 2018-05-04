@@ -124,7 +124,13 @@ void create_file(string filename)
 			Inode *createInode = new Inode(filename, 0, block_size);
 			inodes.push_back(createInode);
 			inode_map->file_names.push_back(filename);
-			inode_map->inode_locations.push_back(getFreeBlockNumber());
+			int block = getFreeBlockNumber();
+			if (block == -1)
+			{
+				printf("ERROR: No more free blocks\n");
+				return;
+			}
+			inode_map->inode_locations.push_back(block);
 		}
 	}
 	else
@@ -311,7 +317,13 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 				{
 					if (inodes[index]->direct_block_pointers[start_block] == -1)
 					{
-						inodes[index]->direct_block_pointers[start_block] = getFreeBlockNumber();
+						int block = getFreeBlockNumber();
+						if (block == -1)
+						{
+							printf("ERROR: No more free blocks\n");
+							return;
+						}
+						inodes[index]->direct_block_pointers[start_block] = block;
 					}
 					Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[start_block], NULL, thread_id);
 					commands.push_back(comm);
@@ -320,7 +332,13 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 				{
 					if (inodes[index]->indirect_block_pointers[start_block - 12] == -1)
 					{
-						inodes[index]->indirect_block_pointers[start_block - 12] = getFreeBlockNumber();
+						int block = getFreeBlockNumber();
+						if (block == -1)
+						{
+							printf("ERROR: No more free blocks\n");
+							return;
+						}
+						inodes[index]->indirect_block_pointers[start_block - 12] = block;
 					}
 					Command *comm = new Command("READ", 0, inodes[index]->indirect_block_pointers[start_block - 12], NULL, thread_id);
 					commands.push_back(comm);
@@ -334,7 +352,13 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 					{
 						if (inodes[index]->direct_block_pointers[i] == -1)
 						{
-							inodes[index]->direct_block_pointers[i] = getFreeBlockNumber();
+							int block = getFreeBlockNumber();
+							if (block == -1)
+							{
+								printf("ERROR: No more free blocks\n");
+								return;
+							}
+							inodes[index]->direct_block_pointers[i] = block;
 						}
 						Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
 						commands.push_back(comm);
@@ -348,7 +372,13 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 						{
 							if (inodes[index]->direct_block_pointers[i] == -1)
 							{
-								inodes[index]->direct_block_pointers[i] = getFreeBlockNumber();
+								int block = getFreeBlockNumber();
+								if (block == -1)
+								{
+									printf("ERROR: No more free blocks\n");
+									return;
+								}
+								inodes[index]->direct_block_pointers[i] = block;
 							}
 							Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
 							commands.push_back(comm);
@@ -357,7 +387,13 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 						{
 							if (inodes[index]->indirect_block_pointers[i] == -1)
 							{
-								inodes[index]->indirect_block_pointers[i] = getFreeBlockNumber();
+								int block = getFreeBlockNumber();
+								if (block == -1)
+								{
+									printf("ERROR: No more free blocks\n");
+									return;
+								}
+								inodes[index]->indirect_block_pointers[i] = block;
 							}
 							Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
 							commands.push_back(comm);
@@ -369,7 +405,13 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 						{
 							if (inodes[index]->indirect_block_pointers[i] == -1)
 							{
-								inodes[index]->indirect_block_pointers[i] = getFreeBlockNumber();
+								int block = getFreeBlockNumber();
+								if (block == -1)
+								{
+									printf("ERROR: No more free blocks\n");
+									return;
+								}
+								inodes[index]->indirect_block_pointers[i] = block;
 							}
 							Command *comm = new Command("READ", 0, inodes[index]->indirect_block_pointers[i], NULL, thread_id);
 							commands.push_back(comm);
@@ -546,7 +588,7 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 		}
 		if (start_byte + num_bytes > inode->file_size) 
 		{
-			printf("ERROR: range too large\n");
+			printf("ERROR: Range too large\n");
 			return;
 		}
 		int start_block = (start_byte / block_size);
@@ -609,7 +651,7 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 	{
 		char out[block_size];
 		int new_start_byte = start_byte % block_size;
-		copy(responses[thread_id][0] + new_start_byte, responses[thread_id][0] + block_size, out);
+		copy(responses[thread_id][0] + new_start_byte, responses[thread_id][0] + num_bytes, out);
 		out[block_size] = '\0';
 		printf("%s\n", out);
 	}

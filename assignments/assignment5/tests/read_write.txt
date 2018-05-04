@@ -1,0 +1,9 @@
+CREATE file1.txt
+WRITE file1.txt a 0 200
+CAT file1.txt
+READ file1.txt 5 38
+READ file1.txt 5 130
+WRITE file1.txt b 5 19
+READ file1.txt 3 50
+WRITE file1.txt c 200 130
+READ file1.txt 195 135

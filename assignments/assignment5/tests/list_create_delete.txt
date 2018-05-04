@@ -1,0 +1,10 @@
+LIST
+CREATE file1.txt
+CREATE file2.txt
+CREATE file3.txt
+CREATE file4.txt
+CREATE file5.txt
+LIST 
+DELETE file5.txt
+DELETE file4.txt
+LIST
