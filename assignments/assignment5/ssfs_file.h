@@ -23,7 +23,7 @@ typedef struct Inode {
 	}
 	Inode()
 	{
-		// fuck off!
+		// nothing
 	}
 		
 } Inode;

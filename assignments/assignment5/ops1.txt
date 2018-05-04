@@ -1,2 +1,8 @@
+IMPORT file.txt test.txt
 CAT file.txt
+WRITE file.txt p 2 200
+CAT file.txt
+CREATE file2.txt
+WRITE file2.txt k 0 10
+READ file2.txt 2 5
 SHUTDOWN

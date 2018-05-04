@@ -33,6 +33,7 @@ bool force_close = false;
 string disk_name = "DISK";
 
 vector<char*> *responses;
+vector<int> *responses_ids;
 
 void read_from_file(string, int, int, int);
 void delete_file(string);
@@ -105,26 +106,26 @@ bool check_existence(string name)
 
 void create_file(string filename)
 {
-	if(inode_map->file_names.size() < 256)
+	if (inode_map->file_names.size() < 256)
 	{
-		if(check_existence(filename) == true)
+		if (check_existence(filename) == true)
 		{
 			printf("ERROR: File name already exists: %s\n", filename.c_str());
+			return;
 		}
-
-		else{
-		
+		else
+		{
 			Inode *createInode = new Inode(filename, 0, block_size);
 			inodes.push_back(createInode);
 			inode_map->file_names.push_back(filename);
 			inode_map->inode_locations.push_back(getFreeBlockNumber());
 		}
-		
 	}
-	else{
+	else
+	{
 		printf("ERROR: Not enough space, ignoring.\n");
+		return;
 	}
-		
 }
 
 void import_file(string ssfs_file, string unix_file)
@@ -220,22 +221,24 @@ void cat_file(string filename, int thread_id)
 	}
 	read_from_file(filename, 0, temp_size, thread_id);
 }
+
 void delete_file(string filename)
 {
-	//remove the inode
-	//free block
-	//search the inode map for the file
-	for(int i = 0; i < inode_map->file_names.size(); i++){
-		if(inode_map->file_names[i] == filename){
+	for (int i = 0; i < inode_map->file_names.size(); i++)
+	{
+		if (inode_map->file_names[i] == filename)
+		{
 			unique_lock<mutex> lck(map_mutex);
-			// freeBlock(inode_map->inode_locations[i]);
+			freeBlock(inode_map->inode_locations[i]);
 			inode_map->file_names.erase(inode_map->file_names.begin() + i);
 			inode_map->inode_locations.erase(inode_map->inode_locations.begin() + i);
 			lck.unlock();		
 		}
 	}
-	for(int j = 0; j < inodes.size(); j++){
-		if(inodes[j]->file_name == filename){
+	for (int j = 0; j < inodes.size(); j++)
+	{
+		if (inodes[j]->file_name == filename)
+		{
 			Inode *inode = inodes[j];
 			unique_lock<mutex> lck(inode_mutex);
 			inodes.erase(inodes.begin() + j);
@@ -260,123 +263,249 @@ void delete_file(string filename)
 	}
 }
 
-
-
-
-
-
 void write_to_file(string filename, char letter, int start_byte, int num_bytes, int thread_id)
 {
-	vector<int> job_ids;
-	int block_id = 0;
-	Inode *inode;
-	vector<Command *> commands;
-	for(int i = 0; i < inode_map->file_names.size(); i++)
+	int index = -1;
+	vector<Command*> commands;
+	for (unsigned int i = 0; i < inodes.size(); i++)
 	{
-		if(inode_map->file_names[i] == filename)
+		if (filename == inodes[i]->file_name)
 		{
-							
-			block_id = inode_map->inode_locations[i];
+			index = i;
 			break;
 		}
 	}
-	if(block_id != 0)
+	if (index >= 0)
 	{
-		for(int i = 0; i < inodes.size(); i++)
+		int current_file_size = inodes[index]->file_size;
+		if (start_byte > current_file_size)
 		{
-			if(inodes[i]->file_name == filename)
+			printf("ERROR: Start byte is out of range.\n");
+			return;
+		}
+		inodes[index]->file_size = (start_byte + num_bytes > inodes[index]->file_size) ? (start_byte + num_bytes) : inodes[index]->file_size;
+
+		if (start_byte + num_bytes > current_file_size)
+		{
+			// meaning we need to append
+			int start_block = start_byte / block_size;
+			int end_block = (start_byte + num_bytes) / block_size;
+			if (start_block == end_block)
 			{
-				inode = inodes[i];
-				break;
-			}
-		}
-		if(start_byte + num_bytes > inode->file_size)
-		{
-			//update the file size to the new file size
-			inode->file_size = inode->file_size + num_bytes;
-		}
-		
-		
-		//Direct block
-		
-		//Updating the direct block pointers && indirect block pointers
-		int num_of_blocks = (num_bytes / block_size) + 1;
-		if(num_of_blocks < 0)
-		{
-			num_of_blocks == 1;
-		}
-		int num_of_blocks_left = num_of_blocks;
-		for(int i = 0; i < num_of_blocks; i++)
-		{		
-			int free_block_number = getFreeBlockNumber();
-			if(free_block_number != -1)
-			{
-				for(int j = 0; j < 12; j++)
+				if (start_block < 12)
 				{
-					//Check if direct block pointer list has space
-					if(inode->direct_block_pointers[j] == -1)
+					if (inodes[index]->direct_block_pointers[start_block] == -1)
 					{
-						inode->direct_block_pointers[j] = free_block_number;
-						num_of_blocks_left--;
+						inodes[index]->direct_block_pointers[start_block] = getFreeBlockNumber();
 					}
-					if(j == 12 && num_of_blocks_left > 0)
-					{
-						for(int k = 0; k < block_size / 4; k++)
-						{
-							if(inode->indirect_block_pointers[k] == -1)
-							{
-								inode->indirect_block_pointers[k] = free_block_number;
-							}
-						}	
-
-					}
+					Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[start_block], NULL, thread_id);
+					commands.push_back(comm);
 				}
-
+				else
+				{
+					if (inodes[index]->indirect_block_pointers[start_block - 12] == -1)
+					{
+						inodes[index]->indirect_block_pointers[start_block - 12] = getFreeBlockNumber();
+					}
+					Command *comm = new Command("READ", 0, inodes[index]->indirect_block_pointers[start_block - 12], NULL, thread_id);
+					commands.push_back(comm);
+				}
 			}
 			else
 			{
-				perror("Not enough free blocks!");
+				if (end_block < 12)
+				{
+					for (int i = start_block; i <= end_block; i++)
+					{
+						if (inodes[index]->direct_block_pointers[i] == -1)
+						{
+							inodes[index]->direct_block_pointers[i] = getFreeBlockNumber();
+						}
+						Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
+						commands.push_back(comm);
+					}
+				}
+				else
+				{
+					if (start_block < 12)
+					{
+						for (int i = start_block; i < 12; i++)
+						{
+							if (inodes[index]->direct_block_pointers[i] == -1)
+							{
+								inodes[index]->direct_block_pointers[i] = getFreeBlockNumber();
+							}
+							Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
+							commands.push_back(comm);
+						}
+						for (int i = 0; i < end_block - 12; i++)
+						{
+							if (inodes[index]->indirect_block_pointers[i] == -1)
+							{
+								inodes[index]->indirect_block_pointers[i] = getFreeBlockNumber();
+							}
+							Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
+							commands.push_back(comm);
+						}
+					}
+					else
+					{
+						for (int i = start_block - 12; i < end_block - 12; i++)
+						{
+							if (inodes[index]->indirect_block_pointers[i] == -1)
+							{
+								inodes[index]->indirect_block_pointers[i] = getFreeBlockNumber();
+							}
+							Command *comm = new Command("READ", 0, inodes[index]->indirect_block_pointers[i], NULL, thread_id);
+							commands.push_back(comm);
+						}
+					}
+				}
 			}
-				
 		}
-		
-
-		char *data = new char[num_bytes];
-		for(int u = 0; u < num_bytes; u++){
-			data[u] = letter;
-		}
-		int start_block = start_byte / block_size;
-		int end_block = ((start_byte + num_bytes) / block_size);
-		cout << start_block << endl;
-		cout << end_block << endl;
-		
-		
-		if(end_block <= 12){
-			for(int i = start_block; i <= end_block; i++)
+		else 
+		{
+			// no appending
+			int start_block = start_byte / block_size;
+			int end_block = (start_byte + num_bytes) / block_size;
+			if (end_block < 12)
 			{
-					
-					int id = getJobId();
-					job_ids.push_back(id);
-					
-					Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], data, thread_id);
-				
+				for (int i = start_block; i <= end_block; i++)
+				{
+					Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
 					commands.push_back(comm);
-					
-	
+				}
+			}
+			else
+			{
+				if (start_block < 12)
+				{
+					for (int i = start_block; i < 12; i++)
+					{
+						Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
+						commands.push_back(comm);
+					}
+					for (int i = 0; i <= end_block - 12; i++)
+					{
+						Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
+						commands.push_back(comm);
+					}
+				}
+				else
+				{
+					for (int i = start_block - 12; i <= end_block - 12; i++)
+					{
+						Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
+						commands.push_back(comm);
+					}
+				}
+			}
+		}
+
+		addCommandToQueue(commands);
+
+		vector<Command*> write_commands;
+		
+		while (responses[thread_id].size() != commands.size());
+
+		int number_of_blocks = commands.size();
+
+		if (number_of_blocks == 1)
+		{
+			int new_start_byte = start_byte % block_size;
+			char *data = responses[thread_id].at(0);
+			int id = responses_ids[thread_id].at(0);
+			responses[thread_id].erase(responses[thread_id].begin());
+			responses_ids[thread_id].erase(responses_ids[thread_id].begin());
+
+			for (int i = new_start_byte; i < new_start_byte + num_bytes; i++)
+			{
+				data[i] = letter;
 			}
 
+			Command *comm = new Command("WRITE", id, data);
+			// write_commands.push_back(comm);
+			addCommandToQueue(comm);
 		}
-		
-		
+		else if (number_of_blocks == 2)
+		{
+			char *data = responses[thread_id].at(0);
+			int id = responses_ids[thread_id].at(0);
+			responses[thread_id].erase(responses[thread_id].begin());
+			responses_ids[thread_id].erase(responses_ids[thread_id].begin());
+
+			int new_start_byte = start_byte % block_size;
+			for (int i = new_start_byte; i < block_size; i++)
+			{
+				data[i] = letter;
+			}
+			Command *comm = new Command("WRITE", id, data);
+			// write_commands.push_back(comm);
+			addCommandToQueue(comm);
+
+			data = responses[thread_id].at(0);
+			id = responses_ids[thread_id].at(0);
+			responses[thread_id].erase(responses[thread_id].begin());
+			responses_ids[thread_id].erase(responses_ids[thread_id].begin());
+
+			int new_end_byte = num_bytes - (block_size - new_start_byte);
+			for (int i = 0; i < new_end_byte; i++)
+			{
+				data[i] = letter;
+			}
+			comm = new Command("WRITE", id, data);
+			// write_commands.push_back(comm);
+			addCommandToQueue(comm);
+		}
+		else
+		{
+			char *data = responses[thread_id].at(0);
+			int id = responses_ids[thread_id].at(0);
+			responses[thread_id].erase(responses[thread_id].begin());
+			responses_ids[thread_id].erase(responses_ids[thread_id].begin());
+
+			int new_start_byte = start_byte % block_size;
+			for (int i = new_start_byte; i < block_size; i++)
+			{
+				data[i] = letter;
+			}
+			Command *comm = new Command("WRITE", id, data);
+			// write_commands.push_back(comm);
+			addCommandToQueue(comm);
+
+			while (responses[thread_id].size() > 1)
+			{
+				data = responses[thread_id].at(0);
+				id = responses_ids[thread_id].at(0);
+				responses[thread_id].erase(responses[thread_id].begin());
+				responses_ids[thread_id].erase(responses_ids[thread_id].begin());
+
+				for (int i = 0; i < block_size; i++)
+				{
+					data[i] = letter;
+				}
+				comm = new Command("WRITE", id, data);
+				// write_commands.push_back(comm);
+				addCommandToQueue(comm);
+			}
+
+			data = responses[thread_id].at(0);
+			id = responses_ids[thread_id].at(0);
+			responses[thread_id].erase(responses[thread_id].begin());
+			responses_ids[thread_id].erase(responses_ids[thread_id].begin());
+
+			int new_end_byte = num_bytes - (block_size - new_start_byte);
+			for (int i = 0; i < new_end_byte; i++)
+			{
+				data[i] = letter;
+			}
+			comm = new Command("WRITE", id, data);
+			// write_commands.push_back(comm);
+			addCommandToQueue(comm);
+		}
+		// addCommandToQueue(write_commands);
 	}
-
-	addCommandToQueue(commands);
 }
-
-
-
-
-
 
 void read_from_file(string filename, int start_byte, int num_bytes, int thread_id)
 {
@@ -485,16 +614,16 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 		int new_num_bytes = block_size - new_start_byte;
 		remaining -= new_num_bytes;
 		printf("%.*s", new_num_bytes, responses[thread_id][0]);
-		for (int i = 1; i < responses[thread_id].size(); i++)
+		for (int i = 1; i < responses[thread_id].size() - 1; i++)
 		{
 			printf("%.*s", block_size, responses[thread_id][i]);
 			remaining -= block_size;
 		}
-		new_start_byte = 0;
-		new_num_bytes = remaining;
-		printf("%.*s", new_num_bytes, responses[thread_id][1]);
+		printf("%.*s", remaining, responses[thread_id].at(responses[thread_id].size() - 1));
 	}
 	printf("\n");
+	responses[thread_id].clear();
+	responses_ids[thread_id].clear();
 }
 
 void list_files()
@@ -513,6 +642,7 @@ void shutdown_ssfs()
 	this_thread::sleep_for(chrono::seconds(2));
 	fstream disk(disk_name.c_str(), ios::binary | ios::out | ios::in);
 
+	cout << "inode map" << endl;
 	// write inode map to file
 	int start_location = 1 * block_size;
 	disk.seekp(start_location);
@@ -542,6 +672,7 @@ void shutdown_ssfs()
 		disk.write((char*)&temp_int, sizeof(temp_int));
 	}
 
+	cout << "free block list" << endl;
 	// write free block list to file
 	start_location = (1 + inode_map_blocks) * block_size;
 	disk.seekp(start_location);
@@ -551,11 +682,12 @@ void shutdown_ssfs()
 		disk.write((char*)&free_block_list[i], sizeof(int));
 	}
 
+	cout << "inodes" << endl;
 	// write inodes to file 
-	for (int i = 0; i < inodes.size(); i++)
+	for (unsigned int i = 0; i < inodes.size(); i++)
 	{
 		int block_number = 0;
-		for (int j = 0; j < inode_map->file_names.size(); j++)
+		for (unsigned int j = 0; j < inode_map->file_names.size(); j++)
 		{
 			if (inode_map->file_names[j] == inodes[i]->file_name)
 			{
@@ -565,23 +697,35 @@ void shutdown_ssfs()
 		}
 		if (block_number != 0)
 		{
-			char name[32];
-			strcpy(name, inodes[i]->file_name.c_str());
-			disk.seekp(block_number * block_size);
+			cout << "blck: " << block_number << endl;
+			cout << "name: " << inodes[i]->file_name << endl;
+			cout << "size: " << inodes[i]->file_size << endl;
 
+			char *name = new char[32];
+			sprintf(name, "%.4s", inodes[i]->file_name.c_str());
+			disk.seekp(block_number * block_size);
 			disk.write(name, 32);
-			disk.write((char*)&inodes[i]->file_size, sizeof(inodes[i]->file_size));
-			for (int j = 0; j < 12; j++) disk.write((char*)&inodes[i]->direct_block_pointers[j], sizeof(int));
-			disk.write((char*)&inodes[i]->indirect_block, sizeof(int));
-			// disk.write((char*)&inodes[i]->double_indirect_block_pointer, sizeof(int));
+
+			disk.write((char*)(&inodes[i]->file_size), sizeof(inodes[i]->file_size));
+
+			for (int j = 0; j < 12; j++) 
+			{
+				cout << inodes[i]->direct_block_pointers[j] << " ";
+				disk.write((char*)(&inodes[i]->direct_block_pointers[j]), sizeof(int));
+			}
+			cout << endl;
+
+			disk.write((char*)(&inodes[i]->indirect_block), sizeof(int));
 			disk.seekp(inodes[i]->indirect_block * block_size);
+			
 			for (int j = 0; j < block_size / 4; j++)
 			{
-				disk.write((char*)&inodes[i]->indirect_block_pointers[j], sizeof(int));
+				disk.write((char*)(&inodes[i]->indirect_block_pointers[j]), sizeof(int));
 			}
 		}
+		cout << "i:" << i << endl;
 	}
-
+	cout << "done" << endl;
 	disk.close();
 }
 
@@ -608,7 +752,6 @@ void execute_commands(string disk_name)
 		
 		if (command->command == "READ")
 		{
-			// cout << "START: READ for job " << command->job_id << endl;
 			ifstream disk(disk_name.c_str(), ios::binary | ios::in);
 			char *buffer = new char [block_size];
 			disk.seekg(command->block_id * block_size);
@@ -616,30 +759,20 @@ void execute_commands(string disk_name)
 			disk.close();
 			
 			responses[command->thread_id].push_back(buffer);
-
-			// cout << "STOP: READ for job " << command->job_id << endl;
+			responses_ids[command->thread_id].push_back(command->block_id);
 		}
 		if (command->command == "WRITE")
 		{
-			// cout << "START: WRITE for job " << command->job_id << endl;
 			fstream disk(disk_name.c_str(), ios::binary | ios::out | ios::in);
 			disk.seekp(command->block_id * block_size, ios::beg);
 			disk.write(command->data, block_size);
 			disk.close();
-			// cout << "STOP: WRITE for job " << command->job_id << endl;
 			delete command->data;
 		}
 		delete command;
 	}
 }
 
-/*
-	Okay, so the idea here is that this (threaded) function will call create_file/import_file/etc 
-	and those functions WON'T actually do anything. They'll just create Commands (holds block,
-	WRITE/READ, and the data) which will be performed by the scheduler thread. So each "command" function
-	will just add the Commands to a queue, and the other thread performs them. So each "command" function
-	should "figure out" what blocks need to be written to based on what it's being asked to do.
-*/
 void read_thread_ops(Thread_Arg *arg)
 {
 	string filename = arg->filename;
@@ -843,7 +976,9 @@ int main(int argc, char **argv)
 	string ops_files[4] = {op1, op2, op3, op4};
 
 	threads.push_back(thread(execute_commands, disk_name));
-	responses = new vector<char*>[total_threads + 1];
+	responses = new vector<char*>[total_threads];
+	responses_ids = new vector<int>[total_threads];
+
 	for (int i = 0; i < total_threads; i++)
 	{
 		threads.push_back(thread(read_thread_ops, new Thread_Arg(ops_files[i], i)));

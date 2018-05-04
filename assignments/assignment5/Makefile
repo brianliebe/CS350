@@ -1,4 +1,4 @@
-FLAGS=-std=c++11 -pthread
+FLAGS=-std=c++11 -pthread -g
 
 all: ssfs_mkdsk ssfs
 
