@@ -21,7 +21,7 @@ vector<Inode*> inodes;
 Inode_Map *inode_map;
 int *free_block_list;
 
-mutex command_mutex, data_mutex, freeblock_mutex, map_mutex, inode_mutex, job_mutex; // make sure we have locks surrounding all thread-accessible data
+mutex command_mutex, data_mutex, freeblock_mutex, map_mutex, inode_mutex, job_mutex, response_mutex;
 condition_variable cond;
 int threads_finished = 0;
 int total_threads = 0;
@@ -38,9 +38,15 @@ vector<int> *responses_ids;
 void read_from_file(string, int, int, int);
 void delete_file(string);
 
-/*
-	Returns an int location for the first free block in the free_block_list
-*/
+
+int checkSize(int id)
+{
+	unique_lock<mutex> lck(response_mutex);
+	int size = responses[id].size();
+	lck.unlock();
+	return size;
+}
+
 int getFreeBlockNumber() 
 {
 	unique_lock<mutex> lck(freeblock_mutex);
@@ -406,7 +412,8 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 
 		vector<Command*> write_commands;
 		
-		while (responses[thread_id].size() != commands.size());
+		// while (responses[thread_id].size() != commands.size());
+		while (checkSize(thread_id) != commands.size());
 
 		int number_of_blocks = commands.size();
 
@@ -440,7 +447,6 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 				data[i] = letter;
 			}
 			Command *comm = new Command("WRITE", id, data);
-			// write_commands.push_back(comm);
 			addCommandToQueue(comm);
 
 			data = responses[thread_id].at(0);
@@ -454,7 +460,6 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 				data[i] = letter;
 			}
 			comm = new Command("WRITE", id, data);
-			// write_commands.push_back(comm);
 			addCommandToQueue(comm);
 		}
 		else
@@ -470,7 +475,6 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 				data[i] = letter;
 			}
 			Command *comm = new Command("WRITE", id, data);
-			// write_commands.push_back(comm);
 			addCommandToQueue(comm);
 
 			while (responses[thread_id].size() > 1)
@@ -485,7 +489,6 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 					data[i] = letter;
 				}
 				comm = new Command("WRITE", id, data);
-				// write_commands.push_back(comm);
 				addCommandToQueue(comm);
 			}
 
@@ -500,10 +503,8 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 				data[i] = letter;
 			}
 			comm = new Command("WRITE", id, data);
-			// write_commands.push_back(comm);
 			addCommandToQueue(comm);
 		}
-		// addCommandToQueue(write_commands);
 	}
 }
 
@@ -595,33 +596,46 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 	printf("OUTPUT:\n");
 	if (responses[thread_id].size() == 1)
 	{
+		char out[block_size];
 		int new_start_byte = start_byte % block_size;
-		printf("%.*s", num_bytes, responses[thread_id][0]);
+		copy(responses[thread_id][0] + new_start_byte, responses[thread_id][0] + block_size, out);
+		out[block_size] = '\0';
+		printf("%s\n", out);
 	}
 	else if (responses[thread_id].size() == 2)
 	{
 		int new_start_byte = start_byte % block_size;
 		int new_num_bytes = block_size - new_start_byte;
-		printf("%.*s", new_num_bytes, responses[thread_id][0]);
-		new_start_byte = 0;
-		new_num_bytes = num_bytes - new_num_bytes;
-		printf("%.*s", new_num_bytes, responses[thread_id][1]);
+		char out[block_size];
+		copy(responses[thread_id][0] + new_start_byte, responses[thread_id][0] + block_size + 1, out);
+		out[block_size] = '\0';
+		printf("%s", out);
+		copy(responses[thread_id][1], responses[thread_id][1] + num_bytes - new_num_bytes + 1, out);
+		out[num_bytes - new_num_bytes] = '\0';
+		printf("%s\n", out);
 	}
 	else 
 	{
+		char out[block_size];
 		int remaining = num_bytes;
 		int new_start_byte = start_byte % block_size;
 		int new_num_bytes = block_size - new_start_byte;
 		remaining -= new_num_bytes;
-		printf("%.*s", new_num_bytes, responses[thread_id][0]);
+
+		copy(responses[thread_id][0] + new_start_byte, responses[thread_id][0] + block_size, out);
+		out[block_size] = '\0';
+		printf("%s", out);
 		for (int i = 1; i < responses[thread_id].size() - 1; i++)
 		{
-			printf("%.*s", block_size, responses[thread_id][i]);
+			copy(responses[thread_id][i], responses[thread_id][i] + block_size, out);
+			out[block_size] = '\0';
+			printf("%s", out);
 			remaining -= block_size;
 		}
-		printf("%.*s", remaining, responses[thread_id].at(responses[thread_id].size() - 1));
+		copy(responses[thread_id].at(responses[thread_id].size() - 1), responses[thread_id].at(responses[thread_id].size() - 1) + remaining, out);
+		out[remaining] = '\0';
+		printf("%s\n", out);
 	}
-	printf("\n");
 	responses[thread_id].clear();
 	responses_ids[thread_id].clear();
 }
@@ -642,7 +656,7 @@ void shutdown_ssfs()
 	this_thread::sleep_for(chrono::seconds(2));
 	fstream disk(disk_name.c_str(), ios::binary | ios::out | ios::in);
 
-	cout << "inode map" << endl;
+	// cout << "inode map" << endl;
 	// write inode map to file
 	int start_location = 1 * block_size;
 	disk.seekp(start_location);
@@ -672,7 +686,7 @@ void shutdown_ssfs()
 		disk.write((char*)&temp_int, sizeof(temp_int));
 	}
 
-	cout << "free block list" << endl;
+	// cout << "free block list" << endl;
 	// write free block list to file
 	start_location = (1 + inode_map_blocks) * block_size;
 	disk.seekp(start_location);
@@ -682,7 +696,7 @@ void shutdown_ssfs()
 		disk.write((char*)&free_block_list[i], sizeof(int));
 	}
 
-	cout << "inodes" << endl;
+	// cout << "inodes" << endl;
 	// write inodes to file 
 	for (unsigned int i = 0; i < inodes.size(); i++)
 	{
@@ -697,9 +711,9 @@ void shutdown_ssfs()
 		}
 		if (block_number != 0)
 		{
-			cout << "blck: " << block_number << endl;
-			cout << "name: " << inodes[i]->file_name << endl;
-			cout << "size: " << inodes[i]->file_size << endl;
+			// cout << "blck: " << block_number << endl;
+			// cout << "name: " << inodes[i]->file_name << endl;
+			// cout << "size: " << inodes[i]->file_size << endl;
 
 			char *name = new char[32];
 			sprintf(name, "%.4s", inodes[i]->file_name.c_str());
@@ -710,10 +724,10 @@ void shutdown_ssfs()
 
 			for (int j = 0; j < 12; j++) 
 			{
-				cout << inodes[i]->direct_block_pointers[j] << " ";
+				// cout << inodes[i]->direct_block_pointers[j] << " ";
 				disk.write((char*)(&inodes[i]->direct_block_pointers[j]), sizeof(int));
 			}
-			cout << endl;
+			// cout << endl;
 
 			disk.write((char*)(&inodes[i]->indirect_block), sizeof(int));
 			disk.seekp(inodes[i]->indirect_block * block_size);
@@ -723,9 +737,9 @@ void shutdown_ssfs()
 				disk.write((char*)(&inodes[i]->indirect_block_pointers[j]), sizeof(int));
 			}
 		}
-		cout << "i:" << i << endl;
+		// cout << "i:" << i << endl;
 	}
-	cout << "done" << endl;
+	// cout << "done" << endl;
 	disk.close();
 }
 
@@ -758,8 +772,10 @@ void execute_commands(string disk_name)
 			disk.read(buffer, block_size);
 			disk.close();
 			
+			unique_lock<mutex> lck2(response_mutex);
 			responses[command->thread_id].push_back(buffer);
 			responses_ids[command->thread_id].push_back(command->block_id);
+			lck2.unlock();
 		}
 		if (command->command == "WRITE")
 		{
