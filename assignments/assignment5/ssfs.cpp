@@ -260,6 +260,11 @@ void delete_file(string filename)
 	}
 }
 
+
+
+
+
+
 void write_to_file(string filename, char letter, int start_byte, int num_bytes, int thread_id)
 {
 	vector<int> job_ids;
@@ -295,7 +300,11 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 		//Direct block
 		
 		//Updating the direct block pointers && indirect block pointers
-		int num_of_blocks = block_size / num_bytes;
+		int num_of_blocks = (num_bytes / block_size) + 1;
+		if(num_of_blocks < 0)
+		{
+			num_of_blocks == 1;
+		}
 		int num_of_blocks_left = num_of_blocks;
 		for(int i = 0; i < num_of_blocks; i++)
 		{		
@@ -330,74 +339,44 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 			}
 				
 		}
-		//////////////////////////
-		//
-		int start_block = (start_byte / block_size);
-		int end_block = (start_byte + num_bytes) / block_size;
+		
+
+		char *data = new char[num_bytes];
+		for(int u = 0; u < num_bytes; u++){
+			data[u] = letter;
+		}
+		int start_block = start_byte / block_size;
+		int end_block = ((start_byte + num_bytes) / block_size);
+		cout << start_block << endl;
+		cout << end_block << endl;
+		
+		
 		if(end_block <= 12){
 			for(int i = start_block; i < end_block; i++)
 			{
-				for(int l = 0; l < num_bytes; l++){
+					
 					int id = getJobId();
 					job_ids.push_back(id);
-					Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
-					comm->thread_id = thread_id;
-					commands.push_back(comm);	
-				}
-			}			
-		
-			
-		}
-		else 
-		{
-			if (start_block < 12)
-			{
-				for (int i = start_block; i < 12; i++)
-				{
-					for(int l = 0; l < num_bytes; l++)
-					{
-						int id = getJobId();
-						job_ids.push_back(id);
-						Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
-						commands.push_back(comm);
-					}
-				}
-				for (int i = 0; i < end_block - 12; i++)
-				{
 					
-					if (inode->indirect_block_pointers[i] != -1)
-					{
-						for(int l = 0; l < num_bytes; l++)
-						{
-							int id = getJobId();
-							job_ids.push_back(id);
-							Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
-							commands.push_back(comm);
-						}
-					}
-				}
-			}
-			else
-			{
-				for (int i = start_block - 12; i < end_block - 12; i++)
-				{
-					if (inode->indirect_block_pointers[i] != -1)
-					{
-						for(int l = 0; l < num_bytes; l++)
-						{
-		
-							int id = getJobId();
-							job_ids.push_back(id);
-							Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], &letter, thread_id);
-							commands.push_back(comm);
-						}
-					}
-				}
+					Command *comm = new Command("WRITE", id, inode->direct_block_pointers[i], data, thread_id);
+				
+					commands.push_back(comm);
+					
+	
 			}
 
-		}			
+		}
+		
+		
 	}
+
+	addCommandToQueue(commands);
 }
+
+
+
+
+
 
 void read_from_file(string filename, int start_byte, int num_bytes, int thread_id)
 {
