@@ -383,7 +383,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 							Command *comm = new Command("READ", 0, inodes[index]->direct_block_pointers[i], NULL, thread_id);
 							commands.push_back(comm);
 						}
-						for (int i = 0; i < end_block - 12; i++)
+						for (int i = 0; i <= end_block - 12; i++)
 						{
 							if (inodes[index]->indirect_block_pointers[i] == -1)
 							{
@@ -401,7 +401,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 					}
 					else
 					{
-						for (int i = start_block - 12; i < end_block - 12; i++)
+						for (int i = start_block - 12; i <= end_block - 12; i++)
 						{
 							if (inodes[index]->indirect_block_pointers[i] == -1)
 							{
@@ -463,7 +463,6 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 
 		vector<Command*> write_commands;
 		
-		// while (responses[thread_id].size() != commands.size());
 		while (checkSize(thread_id) != commands.size() && !force_close);
 		if (force_close) return;
 
@@ -483,7 +482,6 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 			}
 
 			Command *comm = new Command("WRITE", id, data);
-			// write_commands.push_back(comm);
 			addCommandToQueue(comm);
 		}
 		else if (number_of_blocks == 2)
@@ -528,6 +526,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 			}
 			Command *comm = new Command("WRITE", id, data);
 			addCommandToQueue(comm);
+			num_bytes -= block_size - new_start_byte;
 
 			while (responses[thread_id].size() > 1)
 			{
@@ -542,6 +541,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 				}
 				comm = new Command("WRITE", id, data);
 				addCommandToQueue(comm);
+				num_bytes -= block_size;
 			}
 
 			data = responses[thread_id].at(0);
@@ -549,7 +549,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 			responses[thread_id].erase(responses[thread_id].begin());
 			responses_ids[thread_id].erase(responses_ids[thread_id].begin());
 
-			int new_end_byte = num_bytes - (block_size - new_start_byte);
+			int new_end_byte = num_bytes;
 			for (int i = 0; i < new_end_byte; i++)
 			{
 				data[i] = letter;

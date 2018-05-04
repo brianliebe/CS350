@@ -1,8 +1,5 @@
-IMPORT small.txt small.txt
-CAT small.txt
-IMPORT medium.txt medium.txt
-CAT small.txt
-IMPORT large.txt large.txt
-CAT small.txt
+CREATE file.txt
+WRITE file.txt a 0 2000
+CAT file.txt
+READ file.txt 0 1999
 LIST
-SHUTDOWN

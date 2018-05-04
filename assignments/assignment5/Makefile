@@ -1,3 +1,5 @@
+# Group Members: Brian Liebe, Jonathan Chang
+
 FLAGS=-std=c++11 -pthread -g
 
 all: ssfs_mkdsk ssfs
