@@ -1,5 +1,5 @@
 CREATE file2.txt
-WRITE file2.txt h 0 40
+WRITE file2.txt h 0 5
 CAT file2.txt
-CAT file2.txt
+LIST file2.txt
 LIST file2.txt

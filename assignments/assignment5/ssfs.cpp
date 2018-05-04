@@ -352,7 +352,7 @@ void write_to_file(string filename, char letter, int start_byte, int num_bytes, 
 		
 		
 		if(end_block <= 12){
-			for(int i = start_block; i < end_block; i++)
+			for(int i = start_block; i <= end_block; i++)
 			{
 					
 					int id = getJobId();
