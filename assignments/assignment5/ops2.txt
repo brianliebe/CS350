@@ -1,8 +1,0 @@
-CREATE file.txt
-WRITE file.txt h 0 12
-CAT file.txt
-WRITE file.txt j 2 30
-CAT file.txt
-WRITE file.txt k 4 200
-CAT file.txt
-SHUTDOWN

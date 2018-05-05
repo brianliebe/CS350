@@ -26,7 +26,7 @@ condition_variable cond;
 int threads_finished = 0;
 int total_threads = 0;
 int job_id_count;
-
+int lines_count =0;
 int num_blocks = 0;
 int block_size = 0;
 bool force_close = false;
@@ -170,27 +170,48 @@ void import_file(string ssfs_file, string unix_file)
 			break;
 		}
 	}
-
+	
 	ifstream unix(unix_file, std::fstream::ate | std::ifstream::binary);
+
+	
+			
 	int unix_size = unix.tellg();
-
 	inodes[index]->file_size = unix_size;
-
 	unix.seekg(0);
+	
 	while (unix_size)
 	{
 		char *data = new char[block_size];
 		if (unix_size <= block_size)
-		{
+		{	
+
+			
 			unix.read(data, unix_size);
+			unix.seekg(0);
+			 
+			   std::string line;
+			   while (std::getline(unix , line)){
+				lines_count++;
+			}
+		
+			inodes[index]->file_size = unix_size;
+			
+			
+				
 			data[unix_size] = '\0';
+			lines_count = 0;
 			unix_size = 0;
+			
+			
 		}
 		else
 		{
+			
 			unix_size -= block_size;
 			unix.read(data, block_size);
 			data[block_size] = '\0';
+			
+	
 		}
 
 		int block = getFreeBlockNumber();
@@ -200,7 +221,7 @@ void import_file(string ssfs_file, string unix_file)
 			unix.close();
 			return;
 		}
-
+		
 		Command *comm = new Command("WRITE", block, data);
 
 		bool found_in_direct = false;
@@ -661,7 +682,7 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 	}
 	else if (responses[thread_id].size() == 2)
 	{
-		cout << "2 HELLO" << endl;
+		
 		int new_start_byte = start_byte % block_size;
 		int new_num_bytes = block_size - new_start_byte;
 		char out[block_size];
@@ -674,7 +695,7 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 	}
 	else 
 	{
-		cout << "3 HELLO" << endl;
+		
 		char out[block_size];
 		int remaining = num_bytes;
 		int new_start_byte = start_byte % block_size;
@@ -703,7 +724,7 @@ void list_files()
 {	
 	for(int i = 0; i < inodes.size(); i++)
 	{
-		printf("File name: %s, Size: %d\n", inodes[i]->file_name.c_str(), inodes[i]->file_size);
+		printf("File name: %s, Size: %d\n", inodes[i]->file_name.c_str(), inodes[i]->file_size - lines_count);
 	}
 	if (inodes.size() == 0) printf("No files.\n");
 }
@@ -1063,4 +1084,9 @@ int main(int argc, char **argv)
 	{
 		threads[i].join();
 	}
-}
+} 
+
+
+
+
+
