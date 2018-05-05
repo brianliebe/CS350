@@ -649,14 +649,19 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 	printf("OUTPUT:\n");
 	if (responses[thread_id].size() == 1)
 	{
-		char out[block_size];
+		char out[num_bytes];
 		int new_start_byte = start_byte % block_size;
-		copy(responses[thread_id][0] + new_start_byte, responses[thread_id][0] + num_bytes, out);
-		out[block_size] = '\0';
+		
+
+		//copy(responses[thread_id][0] + new_start_byte, responses[thread_id][0] + num_bytes, out);
+		
+		copy(responses[thread_id][0] + new_start_byte, responses[thread_id][0] + num_bytes + new_start_byte, out);
+		out[num_bytes] = '\0';
 		printf("%s\n", out);
 	}
 	else if (responses[thread_id].size() == 2)
 	{
+		cout << "2 HELLO" << endl;
 		int new_start_byte = start_byte % block_size;
 		int new_num_bytes = block_size - new_start_byte;
 		char out[block_size];
@@ -669,6 +674,7 @@ void read_from_file(string filename, int start_byte, int num_bytes, int thread_i
 	}
 	else 
 	{
+		cout << "3 HELLO" << endl;
 		char out[block_size];
 		int remaining = num_bytes;
 		int new_start_byte = start_byte % block_size;

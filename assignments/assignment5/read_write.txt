@@ -1,0 +1,12 @@
+CREATE file1.txt
+WRITE file1.txt a 0 1
+WRITE file1.txt b 1 1
+WRITE file1.txt c 2 1
+WRITE file1.txt d 3 1
+WRITE file1.txt e 4 1
+WRITE file1.txt f 5 1
+WRITE file1.txt g 6 1
+WRITE file1.txt h 7 1
+WRITE file1.txt i 8 1
+WRITE file1.txt j 9 1
+READ file1.txt 5 4
