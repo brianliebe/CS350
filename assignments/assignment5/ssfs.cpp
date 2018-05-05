@@ -188,7 +188,7 @@ void import_file(string ssfs_file, string unix_file)
 			
 			unix.read(data, unix_size);
 			unix.seekg(0);
-			 
+			lines_count = 0;
 			   std::string line;
 			   while (std::getline(unix , line)){
 				lines_count++;
@@ -199,7 +199,7 @@ void import_file(string ssfs_file, string unix_file)
 			
 				
 			data[unix_size] = '\0';
-			lines_count = 0;
+			
 			unix_size = 0;
 			
 			
@@ -246,8 +246,10 @@ void import_file(string ssfs_file, string unix_file)
 			}
 		}
 		addCommandToQueue(comm);
+		
 	}
 	unix.close();
+	
 }
 
 void cat_file(string filename, int thread_id)
